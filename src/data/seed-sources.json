@@ -1,0 +1,82 @@
+[
+  {
+    "id": "src-001",
+    "type": "book",
+    "author": "Heinrich Neuhaus",
+    "title": "The Art of Piano Playing",
+    "content": "The teacher must develop the student's independent thinking, not mechanical obedience. The goal is to transform the notation into living music, not to reproduce symbols.",
+    "stance": "peripheral",
+    "axes": ["פדגוגי", "פסיכולוגי"],
+    "tags": ["הוראה", "עצמאות", "חשיבה-ביקורתית", "מוזיקה-חיה"]
+  },
+  {
+    "id": "src-002",
+    "type": "institutional",
+    "author": "Royal Conservatory of Music",
+    "title": "Graded Examination Syllabus",
+    "content": "Students must demonstrate technical proficiency through standardized repertoire at each grade level. Assessment criteria emphasize accuracy, tempo, and adherence to score markings.",
+    "stance": "establishment",
+    "axes": ["מוסדי", "ביצועי"],
+    "tags": ["בחינות", "סטנדרטיזציה", "טכניקה", "רפרטואר", "דיוק"]
+  },
+  {
+    "id": "src-003",
+    "type": "book",
+    "author": "Seymour Bernstein",
+    "title": "With Your Own Two Hands",
+    "content": "Self-discovery is the key to musical growth. The practice room should be a laboratory, not a punishment chamber. Students must learn to listen to themselves with curiosity, not judgment.",
+    "stance": "peripheral",
+    "axes": ["פדגוגי", "פסיכולוגי", "ביצועי"],
+    "tags": ["גילוי-עצמי", "אימון", "הקשבה", "סקרנות", "שיפוט"]
+  },
+  {
+    "id": "src-004",
+    "type": "research",
+    "author": "Noa Kageyama",
+    "title": "Performance Anxiety and the Musician's Brain",
+    "content": "Performance anxiety activates the fight-or-flight response, fundamentally altering motor control and cognitive processing. Traditional performance preparation ignores neuroscience entirely.",
+    "stance": "peripheral",
+    "axes": ["פסיכולוגי", "ביצועי"],
+    "tags": ["חרדת-ביצוע", "מוח", "מוטוריקה", "נוירו-מדע", "פחד"]
+  },
+  {
+    "id": "src-005",
+    "type": "book",
+    "author": "Tobias Matthay",
+    "title": "The Act of Touch in All Its Diversity",
+    "content": "The arm and hand must be understood as a weight-bearing system. Tension is the enemy of tone. All problems of piano technique are ultimately problems of muscular coordination and release.",
+    "stance": "peripheral",
+    "axes": ["ביצועי", "פדגוגי"],
+    "tags": ["מגע", "משקל", "מתח", "שחרור", "טכניקה", "גוף"]
+  },
+  {
+    "id": "src-006",
+    "type": "institutional",
+    "author": "ABRSM",
+    "title": "Music Theory Grades Syllabus",
+    "content": "Theory must precede practice. Students should demonstrate written knowledge of scales, intervals, and harmonic progressions as prerequisite to advanced performance examinations.",
+    "stance": "establishment",
+    "axes": ["תיאורטי", "מוסדי"],
+    "tags": ["תיאוריה", "בחינות", "סולמות", "הרמוניה", "ידע-תיאורטי"]
+  },
+  {
+    "id": "src-007",
+    "type": "quote",
+    "author": "Glenn Gould",
+    "title": "Payzant Interview, 1974",
+    "content": "The concert is not the culmination of musical study — it is its corruption. The truly musical experience is intimate, private, and freed from the social ritual of performance.",
+    "stance": "peripheral",
+    "axes": ["ביצועי", "מוסדי", "פסיכולוגי"],
+    "tags": ["קונצרט", "ביצוע", "אינטימיות", "טקס-חברתי", "חוויה-מוזיקלית"]
+  },
+  {
+    "id": "src-008",
+    "type": "book",
+    "author": "William Westney",
+    "title": "The Perfect Wrong Note",
+    "content": "Wrong notes are not failures — they are the most informative events in practice. A student who never makes mistakes is a student who never takes the risks necessary for growth.",
+    "stance": "peripheral",
+    "axes": ["פדגוגי", "פסיכולוגי"],
+    "tags": ["טעויות", "גדילה", "סיכון", "למידה", "אימון"]
+  }
+]
