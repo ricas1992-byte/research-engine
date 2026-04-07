@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import type { Insight, Source, CrossReference } from '../types/insight';
 import { AXIS_COLORS, CROSSREF_COLORS } from '../utils/colors';
 
-interface GraphNode {
+export interface GraphNode {
   id: string;
   label: string;
   kind: 'insight' | 'source';
@@ -16,7 +16,7 @@ interface GraphNode {
   fy?: number | null;
 }
 
-interface GraphLink {
+export interface GraphLink {
   source: string | GraphNode;
   target: string | GraphNode;
   type: CrossReference['type'];
@@ -51,64 +51,70 @@ export function NetworkGraph({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Build filtered data
-  const filteredInsights = insights.filter((ins) => {
-    if (filterAxis && ins.axis !== filterAxis) return false;
-    if (filterRound && ins.round !== filterRound) return false;
-    return true;
-  });
-
-  const filteredRefs = crossRefs.filter((ref) => {
-    if (filterRefType && ref.type !== filterRefType) return false;
-    const insightIds = new Set(filteredInsights.map((i) => i.id));
-    return insightIds.has(ref.insightId);
-  });
-
-  const referencedSourceIds = new Set(
-    filteredRefs.filter((r) => r.targetKind === 'source').map((r) => r.targetId)
+  const filteredInsights = useMemo(
+    () => insights.filter((ins) => {
+      if (filterAxis && ins.axis !== filterAxis) return false;
+      if (filterRound && ins.round !== filterRound) return false;
+      return true;
+    }),
+    [insights, filterAxis, filterRound]
   );
-  const filteredSources = sources.filter((s) => referencedSourceIds.has(s.id));
 
-  // Count connections
-  const connectionCount: Record<string, number> = {};
-  filteredRefs.forEach((ref) => {
-    connectionCount[ref.insightId] = (connectionCount[ref.insightId] ?? 0) + 1;
-    connectionCount[ref.targetId] = (connectionCount[ref.targetId] ?? 0) + 1;
-  });
+  const filteredRefs = useMemo(() => {
+    const insightIds = new Set(filteredInsights.map((i) => i.id));
+    return crossRefs.filter((ref) => {
+      if (filterRefType && ref.type !== filterRefType) return false;
+      return insightIds.has(ref.insightId);
+    });
+  }, [crossRefs, filteredInsights, filterRefType]);
 
-  const nodes: GraphNode[] = [
-    ...filteredInsights.map((ins) => ({
-      id: ins.id,
-      label: ins.content.slice(0, 40) + (ins.content.length > 40 ? '...' : ''),
-      kind: 'insight' as const,
-      axis: ins.axis,
-      connections: connectionCount[ins.id] ?? 0,
-      data: ins,
-    })),
-    ...filteredSources.map((src) => ({
-      id: src.id,
-      label: `${src.author}: ${src.title}`.slice(0, 40),
-      kind: 'source' as const,
-      axis: src.axes[0],
-      connections: connectionCount[src.id] ?? 0,
-      data: src,
-    })),
-  ];
+  const filteredSources = useMemo(() => {
+    const referencedSourceIds = new Set(
+      filteredRefs.filter((r) => r.targetKind === 'source').map((r) => r.targetId)
+    );
+    return sources.filter((s) => referencedSourceIds.has(s.id));
+  }, [sources, filteredRefs]);
 
-  const links: GraphLink[] = filteredRefs
-    .filter((ref) => {
-      const nodeIds = new Set(nodes.map((n) => n.id));
-      return nodeIds.has(ref.insightId) && nodeIds.has(ref.targetId);
-    })
-    .map((ref) => ({
-      source: ref.insightId,
-      target: ref.targetId,
-      type: ref.type,
-      confidence: ref.confidence,
-      explanation: ref.explanation,
-      zachpiracyQuestion: ref.zachpiracyQuestion,
-      id: ref.id,
-    }));
+  const nodes: GraphNode[] = useMemo(() => {
+    const connectionCount: Record<string, number> = {};
+    filteredRefs.forEach((ref) => {
+      connectionCount[ref.insightId] = (connectionCount[ref.insightId] ?? 0) + 1;
+      connectionCount[ref.targetId] = (connectionCount[ref.targetId] ?? 0) + 1;
+    });
+    return [
+      ...filteredInsights.map((ins) => ({
+        id: ins.id,
+        label: ins.content.slice(0, 40) + (ins.content.length > 40 ? '...' : ''),
+        kind: 'insight' as const,
+        axis: ins.axis,
+        connections: connectionCount[ins.id] ?? 0,
+        data: ins,
+      })),
+      ...filteredSources.map((src) => ({
+        id: src.id,
+        label: `${src.author}: ${src.title}`.slice(0, 40),
+        kind: 'source' as const,
+        axis: src.axes[0],
+        connections: connectionCount[src.id] ?? 0,
+        data: src,
+      })),
+    ];
+  }, [filteredInsights, filteredSources, filteredRefs]);
+
+  const links: GraphLink[] = useMemo(() => {
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    return filteredRefs
+      .filter((ref) => nodeIds.has(ref.insightId) && nodeIds.has(ref.targetId))
+      .map((ref) => ({
+        source: ref.insightId,
+        target: ref.targetId,
+        type: ref.type,
+        confidence: ref.confidence,
+        explanation: ref.explanation,
+        zachpiracyQuestion: ref.zachpiracyQuestion,
+        id: ref.id,
+      }));
+  }, [filteredRefs, nodes]);
 
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
