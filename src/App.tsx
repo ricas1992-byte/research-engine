@@ -9,7 +9,7 @@ import { ZachariaReport } from './views/ZachariaReport';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/research-engine">
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
