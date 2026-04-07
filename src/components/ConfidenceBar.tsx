@@ -10,14 +10,14 @@ export function ConfidenceBar({ confidence, showLabel = true }: Props) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${color}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       {showLabel && (
-        <span className="text-xs text-gray-500 w-8 text-left">{pct}%</span>
+        <span className="text-xs text-slate-400 w-8 text-left">{pct}%</span>
       )}
     </div>
   );

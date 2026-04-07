@@ -28,7 +28,6 @@ export function ZachariaReport() {
     );
     const roundBlindSpots = blindSpots.filter((bs) => !bs.resolvedBy);
 
-    // Try AI generation first, fall back to deterministic
     let aiResult: {
       newInsightsSummary: string;
       openQuestions: string[];
@@ -46,11 +45,9 @@ export function ZachariaReport() {
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       aiResult = JSON.parse(cleaned);
     } catch (err) {
-      // Fall through to deterministic
       console.warn('AI generation failed, using deterministic fallback:', err);
     }
 
-    // Significant cross-refs for this round
     const significantRefs = roundCrossRefs
       .filter((r) => r.type === 'contradicts' || r.type === 'blind_spot' || r.confidence > 0.7)
       .slice(0, 5);
@@ -125,20 +122,20 @@ export function ZachariaReport() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 font-hebrew">דוח זכריה</h1>
-          <p className="text-gray-500 text-sm">ניתוח ביקורתי לפי סבב — מה האדם מבפנים לא רואה?</p>
+          <h1 className="text-2xl font-bold text-slate-800">דוח זכריה</h1>
+          <p className="text-slate-400 text-sm">ניתוח ביקורתי לפי סבב — מה האדם מבפנים לא רואה?</p>
         </div>
         {report && (
           <div className="flex gap-2">
             <button
               onClick={handleCopy}
-              className="text-sm px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="text-sm px-3 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
             >
               {copied ? '✓ הועתק' : 'העתק Markdown'}
             </button>
             <button
               onClick={handleDownload}
-              className="text-sm px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+              className="text-sm px-3 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors"
             >
               הורד .md
             </button>
@@ -147,13 +144,13 @@ export function ZachariaReport() {
       </div>
 
       {/* Round selector + generate */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 flex items-end gap-4">
+      <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex items-end gap-4 shadow-card">
         <div className="flex-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">בחר סבב</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">בחר סבב</label>
           <select
             value={selectedRound}
             onChange={(e) => { setSelectedRound(parseInt(e.target.value)); setReport(null); }}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-700"
           >
             {rounds.map((r) => (
               <option key={r} value={r}>
@@ -181,26 +178,26 @@ export function ZachariaReport() {
       {report && (
         <div className="space-y-5">
           {/* Report header */}
-          <div className="bg-gradient-to-l from-amber-50 to-white border border-amber-200 rounded-xl p-5">
+          <div className="bg-white border border-slate-200/80 border-r-4 border-r-amber-400 rounded-xl p-5 shadow-card">
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-lg font-bold text-gray-800 font-hebrew">
+              <h2 className="text-lg font-bold text-slate-800">
                 דוח סבב {report.round}
               </h2>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-slate-400">
                 {new Date(report.generatedAt).toLocaleDateString('he-IL', {
                   year: 'numeric', month: 'long', day: 'numeric',
                 })}
               </span>
             </div>
-            <p className="text-xs text-amber-600 font-medium mb-3">ד"ר זכריה פלאבין — ניתוח ביקורתי</p>
-            <p className="text-gray-700 leading-relaxed">{report.newInsightsSummary}</p>
+            <p className="text-xs text-amber-500 font-semibold mb-3">ד"ר זכריה פלאבין — ניתוח ביקורתי</p>
+            <p className="text-slate-700 leading-relaxed">{report.newInsightsSummary}</p>
           </div>
 
           {/* Significant cross-refs */}
           {report.significantCrossRefs.length > 0 && (
-            <section className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <span className="w-5 h-5 bg-blue-100 text-blue-700 text-xs rounded-full flex items-center justify-center font-bold">
+            <section className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-card">
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="w-5 h-5 bg-indigo-100 text-indigo-700 text-xs rounded-full flex items-center justify-center font-bold">
                   {report.significantCrossRefs.length}
                 </span>
                 הצלבות משמעותיות
@@ -208,12 +205,12 @@ export function ZachariaReport() {
               <div className="space-y-3">
                 {report.significantCrossRefs.map((ref) => (
                   <div key={ref.id} className="border-r-4 pr-3 py-1" style={{
-                    borderColor: ['contradicts', 'blind_spot'].includes(ref.type) ? '#ef4444' : '#3b82f6',
+                    borderColor: ['contradicts', 'blind_spot'].includes(ref.type) ? '#ef4444' : '#6366f1',
                   }}>
-                    <span className="text-xs font-bold text-gray-500 uppercase">
+                    <span className="text-xs font-bold text-slate-400 uppercase">
                       {CROSSREF_LABELS[ref.type]}
                     </span>
-                    <p className="text-sm text-gray-700 mt-0.5">{ref.explanation}</p>
+                    <p className="text-sm text-slate-700 mt-0.5">{ref.explanation}</p>
                     <p className="text-xs text-amber-600 mt-1 italic">← {ref.zachpiracyQuestion}</p>
                   </div>
                 ))}
@@ -223,8 +220,8 @@ export function ZachariaReport() {
 
           {/* Blind spots */}
           {report.blindSpots.length > 0 && (
-            <section className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+            <section className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-card">
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 bg-red-100 text-red-700 text-xs rounded-full flex items-center justify-center font-bold">
                   {report.blindSpots.length}
                 </span>
@@ -237,7 +234,7 @@ export function ZachariaReport() {
                     className={`rounded-lg px-3 py-2 border text-sm ${
                       bs.severity === 'high' ? 'bg-red-50 border-red-200 text-red-800'
                       : bs.severity === 'medium' ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
-                      : 'bg-gray-50 border-gray-200 text-gray-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
                     }`}
                   >
                     <span className="font-medium">[{bs.axis}]</span> {bs.description}
@@ -249,11 +246,11 @@ export function ZachariaReport() {
 
           {/* Open questions */}
           {report.openQuestions.length > 0 && (
-            <section className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-800 mb-3">שאלות פתוחות</h3>
+            <section className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-card">
+              <h3 className="font-semibold text-slate-800 mb-3">שאלות פתוחות</h3>
               <ul className="space-y-2">
                 {report.openQuestions.map((q, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                     <span className="text-amber-500 font-bold mt-0.5">?</span>
                     {q}
                   </li>
@@ -264,12 +261,12 @@ export function ZachariaReport() {
 
           {/* Suggested topics */}
           {report.suggestedTopics.length > 0 && (
-            <section className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="font-semibold text-gray-800 mb-3">נושאים מוצעים לדיון הבא</h3>
+            <section className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-card">
+              <h3 className="font-semibold text-slate-800 mb-3">נושאים מוצעים לדיון הבא</h3>
               <ul className="space-y-2">
                 {report.suggestedTopics.map((topic, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="text-blue-500 font-bold mt-0.5">→</span>
+                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                    <span className="text-indigo-500 font-bold mt-0.5">→</span>
                     {topic}
                   </li>
                 ))}
@@ -278,11 +275,11 @@ export function ZachariaReport() {
           )}
 
           {/* Raw Markdown preview */}
-          <details className="bg-gray-50 border border-gray-200 rounded-xl">
-            <summary className="px-4 py-3 cursor-pointer text-sm text-gray-500 hover:text-gray-700 select-none">
+          <details className="bg-slate-50 border border-slate-200/80 rounded-xl">
+            <summary className="px-4 py-3 cursor-pointer text-sm text-slate-500 hover:text-slate-700 select-none">
               תצוגה מקדימה של Markdown
             </summary>
-            <pre className="px-4 pb-4 text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap" dir="ltr">
+            <pre className="px-4 pb-4 text-xs text-slate-600 overflow-x-auto whitespace-pre-wrap" dir="ltr">
               {exportReportAsMarkdown(report)}
             </pre>
           </details>
@@ -290,7 +287,7 @@ export function ZachariaReport() {
       )}
 
       {!report && !generating && (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-slate-400">
           <p className="text-5xl mb-4">📋</p>
           <p className="text-lg">בחר סבב ולחץ "הפק דוח"</p>
           <p className="text-sm mt-1">הדוח ישלב ניתוח AI עם ממצאי המנוע</p>

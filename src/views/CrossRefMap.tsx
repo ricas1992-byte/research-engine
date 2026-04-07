@@ -73,13 +73,13 @@ export function CrossRefMap() {
       {/* Graph area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 flex flex-wrap items-center gap-3">
-          <h1 className="font-bold text-gray-800 text-lg font-hebrew">מפת הצלבות</h1>
+        <div className="bg-white border-b border-slate-200/80 px-4 py-3 flex flex-wrap items-center gap-3 shadow-sm">
+          <h1 className="font-bold text-slate-800 text-lg">מפת הצלבות</h1>
 
           <select
             value={filterAxis}
             onChange={(e) => setFilterAxis(e.target.value as Axis | '')}
-            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-700"
           >
             <option value="">כל הצירים</option>
             {ALL_AXES.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -88,7 +88,7 @@ export function CrossRefMap() {
           <select
             value={filterRound ?? ''}
             onChange={(e) => setFilterRound(e.target.value ? parseInt(e.target.value) : undefined)}
-            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-700"
           >
             <option value="">כל הסבבים</option>
             {rounds.map((r) => <option key={r} value={r}>סבב {r}</option>)}
@@ -97,7 +97,7 @@ export function CrossRefMap() {
           <select
             value={filterRefType}
             onChange={(e) => setFilterRefType(e.target.value as CrossRefType | '')}
-            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-700"
           >
             <option value="">כל סוגי הקשרים</option>
             {ALL_REF_TYPES.map((t) => <option key={t} value={t}>{CROSSREF_LABELS[t]}</option>)}
@@ -106,23 +106,23 @@ export function CrossRefMap() {
           {(filterAxis || filterRound || filterRefType) && (
             <button
               onClick={() => { setFilterAxis(''); setFilterRound(undefined); setFilterRefType(''); }}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-slate-400 hover:text-slate-600"
             >
               ✕ נקה
             </button>
           )}
 
-          <div className="mr-auto flex items-center gap-3 text-xs text-gray-400">
+          <div className="mr-auto flex items-center gap-3 text-xs text-slate-400">
             <span>{insights.length} תובנות</span>
             <span>{crossRefs.length} הצלבות</span>
             {isolatedCount > 0 && (
-              <span className="text-amber-600 font-medium">{isolatedCount} מבודדות</span>
+              <span className="text-amber-500 font-medium">{isolatedCount} מבודדות</span>
             )}
           </div>
         </div>
 
         {/* Graph */}
-        <div className="flex-1 overflow-hidden p-3">
+        <div className="flex-1 overflow-hidden p-3 bg-slate-50">
           <NetworkGraph
             insights={insights}
             sources={sources}
@@ -137,17 +137,17 @@ export function CrossRefMap() {
       </div>
 
       {/* Right panel */}
-      <aside className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+      <aside className="w-80 bg-white border-r border-slate-200/80 flex flex-col overflow-hidden shadow-sm">
         {/* Tab switcher */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-slate-200/80">
           {(['legend', 'node', 'link'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setSidebarTab(tab)}
               className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                 sidebarTab === tab
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab === 'legend' ? 'מקרא' : tab === 'node' ? 'צומת' : 'קשר'}
@@ -160,48 +160,48 @@ export function CrossRefMap() {
           {sidebarTab === 'legend' && (
             <div className="space-y-4">
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">צבעי צירים</h3>
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">צבעי צירים</h3>
                 {ALL_AXES.map((axis) => (
                   <div key={axis} className="flex items-center gap-2 mb-1.5">
                     <div
                       className="w-3 h-3 rounded-full flex-shrink-0"
                       style={{ backgroundColor: AXIS_COLORS[axis].graph }}
                     />
-                    <span className="text-sm text-gray-600">{axis}</span>
+                    <span className="text-sm text-slate-600">{axis}</span>
                   </div>
                 ))}
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">סוגי קשרים</h3>
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">סוגי קשרים</h3>
                 {ALL_REF_TYPES.map((type) => (
                   <div key={type} className="flex items-center gap-2 mb-1.5">
                     <div
                       className="w-6 h-0.5 flex-shrink-0"
                       style={{ backgroundColor: CROSSREF_COLORS[type] }}
                     />
-                    <span className="text-sm text-gray-600">{CROSSREF_LABELS[type]}</span>
+                    <span className="text-sm text-slate-600">{CROSSREF_LABELS[type]}</span>
                   </div>
                 ))}
               </div>
 
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">צורות</h3>
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">צורות</h3>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-4 h-4 rounded-full bg-blue-400 flex-shrink-0" />
-                  <span className="text-sm text-gray-600">תובנה</span>
+                  <div className="w-4 h-4 rounded-full bg-indigo-400 flex-shrink-0" />
+                  <span className="text-sm text-slate-600">תובנה</span>
                 </div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-4 h-4 bg-blue-400 flex-shrink-0 rounded-sm" />
-                  <span className="text-sm text-gray-600">מקור</span>
+                  <div className="w-4 h-4 bg-indigo-400 flex-shrink-0 rounded-sm" />
+                  <span className="text-sm text-slate-600">מקור</span>
                 </div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <div className="w-4 h-4 rounded-full border-2 border-amber-500 border-dashed flex-shrink-0" />
-                  <span className="text-sm text-gray-600">תובנה מבודדת</span>
+                  <span className="text-sm text-slate-600">תובנה מבודדת</span>
                 </div>
               </div>
 
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-400">
                 גרור צמתים לארגון ידני. גלגל עכבר לזום. לחץ על צומת/קשר לפרטים.
               </p>
             </div>
@@ -215,15 +215,15 @@ export function CrossRefMap() {
                   <div className="flex gap-2 flex-wrap">
                     <AxisBadge axis={nodeInsight.axis} />
                     <StatusBadge status={nodeInsight.status} />
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                    <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">
                       סבב {nodeInsight.round}
                     </span>
                   </div>
-                  <p className="text-gray-800 leading-relaxed">{nodeInsight.content}</p>
+                  <p className="text-slate-700 leading-relaxed">{nodeInsight.content}</p>
                   {nodeInsight.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {nodeInsight.tags.map((t) => (
-                        <span key={t} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">#{t}</span>
+                        <span key={t} className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">#{t}</span>
                       ))}
                     </div>
                   )}
@@ -236,9 +236,9 @@ export function CrossRefMap() {
               )}
               {nodeSource && (
                 <>
-                  <div className="font-semibold text-gray-800">{nodeSource.title}</div>
-                  <div className="text-sm text-gray-500">{nodeSource.author}</div>
-                  <p className="text-sm text-gray-700 italic">"{nodeSource.content}"</p>
+                  <div className="font-semibold text-slate-800">{nodeSource.title}</div>
+                  <div className="text-sm text-slate-500">{nodeSource.author}</div>
+                  <p className="text-sm text-slate-600 italic">"{nodeSource.content}"</p>
                   <div className="flex gap-1 flex-wrap">
                     {nodeSource.axes.map((a) => <AxisBadge key={a} axis={a} size="sm" />)}
                   </div>
@@ -247,18 +247,18 @@ export function CrossRefMap() {
 
               {nodeCrossRefs.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
                     הצלבות ({nodeCrossRefs.length})
                   </h3>
                   {nodeCrossRefs.map((ref) => (
-                    <div key={ref.id} className="border rounded p-2 mb-2 text-xs">
+                    <div key={ref.id} className="border border-slate-200 rounded-lg p-2 mb-2 text-xs">
                       <div
                         className="font-bold mb-1"
                         style={{ color: CROSSREF_COLORS[ref.type] }}
                       >
                         {CROSSREF_LABELS[ref.type]}
                       </div>
-                      <p className="text-gray-600">{ref.explanation}</p>
+                      <p className="text-slate-600">{ref.explanation}</p>
                       <ConfidenceBar confidence={ref.confidence} />
                     </div>
                   ))}
@@ -277,7 +277,7 @@ export function CrossRefMap() {
                 {CROSSREF_LABELS[selectedLink.type]}
               </div>
 
-              <p className="text-gray-700 leading-relaxed">{selectedLink.explanation}</p>
+              <p className="text-slate-700 leading-relaxed">{selectedLink.explanation}</p>
 
               <div className="bg-amber-50 border border-amber-200 rounded p-3">
                 <p className="text-xs font-bold text-amber-600 mb-1">שאלת זכריה:</p>
@@ -285,7 +285,7 @@ export function CrossRefMap() {
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 mb-1">ביטחון</p>
+                <p className="text-xs text-slate-500 mb-1">ביטחון</p>
                 <ConfidenceBar confidence={selectedLink.confidence} />
               </div>
 
@@ -295,7 +295,7 @@ export function CrossRefMap() {
                   setSelectedLink(null);
                   setSidebarTab('legend');
                 }}
-                className="w-full text-sm py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50"
+                className="w-full text-sm py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
               >
                 מחק הצלבה זו
               </button>
@@ -303,10 +303,10 @@ export function CrossRefMap() {
           )}
 
           {sidebarTab === 'node' && !selectedNode && (
-            <p className="text-gray-400 text-sm text-center mt-8">לחץ על צומת בגרף לצפייה בפרטים</p>
+            <p className="text-slate-400 text-sm text-center mt-8">לחץ על צומת בגרף לצפייה בפרטים</p>
           )}
           {sidebarTab === 'link' && !selectedLink && (
-            <p className="text-gray-400 text-sm text-center mt-8">לחץ על קשר בגרף לצפייה בפרטים</p>
+            <p className="text-slate-400 text-sm text-center mt-8">לחץ על קשר בגרף לצפייה בפרטים</p>
           )}
         </div>
       </aside>

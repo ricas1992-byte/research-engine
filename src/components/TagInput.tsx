@@ -41,19 +41,19 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder = 'הו
   return (
     <div className="relative">
       <div
-        className="min-h-[42px] flex flex-wrap gap-1.5 p-2 border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 cursor-text"
+        className="min-h-[42px] flex flex-wrap gap-1.5 p-2 border border-slate-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 cursor-text"
         onClick={() => inputRef.current?.focus()}
       >
         {tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-sm px-2 py-0.5 rounded-full"
+            className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 text-sm px-2 py-0.5 rounded-full"
           >
             {tag}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
-              className="text-blue-400 hover:text-blue-600 leading-none"
+              className="text-indigo-400 hover:text-indigo-600 leading-none"
               aria-label={`הסר תגית ${tag}`}
             >
               ×
@@ -69,18 +69,18 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder = 'הו
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           onFocus={() => setShowSuggestions(true)}
           placeholder={tags.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[120px] outline-none text-sm bg-transparent placeholder-gray-400"
+          className="flex-1 min-w-[120px] outline-none text-sm bg-transparent placeholder-slate-400"
           dir="rtl"
         />
       </div>
 
       {showSuggestions && input && filtered.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-card-md max-h-40 overflow-y-auto">
           {filtered.slice(0, 8).map((s) => (
             <li
               key={s}
               onMouseDown={() => addTag(s)}
-              className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer text-gray-700"
+              className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer text-slate-700"
             >
               {s}
             </li>
@@ -88,7 +88,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder = 'הו
         </ul>
       )}
 
-      <p className="text-xs text-gray-400 mt-1">הקש Enter או פסיק להוספת תגית</p>
+      <p className="text-xs text-slate-400 mt-1">הקש Enter או פסיק להוספת תגית</p>
     </div>
   );
 }
