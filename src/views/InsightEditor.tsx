@@ -114,7 +114,7 @@ export function InsightEditor() {
           <button
             onClick={handleSave}
             disabled={!form.content.trim()}
-            className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             שמור
           </button>

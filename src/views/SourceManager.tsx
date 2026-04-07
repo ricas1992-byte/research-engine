@@ -80,7 +80,7 @@ export function SourceManager() {
         </div>
         <button
           onClick={() => { setShowForm(!showForm); setEditing(null); setForm(EMPTY_FORM); }}
-          className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
         >
           + מקור חדש
         </button>
@@ -194,7 +194,7 @@ export function SourceManager() {
             <button
               onClick={handleSave}
               disabled={!form.title.trim() || !form.author.trim()}
-              className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
             >
               שמור מקור
             </button>

@@ -71,20 +71,20 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 font-hebrew">לוח בקרה</h1>
-          <p className="text-gray-500 text-sm mt-0.5">מנוע המחקר של יותם — פדגוגיית פסנתר</p>
+          <h1 className="text-2xl font-bold text-slate-800">לוח בקרה</h1>
+          <p className="text-slate-400 text-sm mt-0.5">מנוע המחקר של יותם — פדגוגיית פסנתר</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleImport}
-            className="text-sm px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="text-sm px-3 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
           >
             ייבוא JSON
           </button>
           <button
             onClick={() => rescanAll()}
             disabled={analysis.isAnalyzing}
-            className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="text-sm px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             {analysis.isAnalyzing ? 'סורק...' : 'סרוק הכל מחדש'}
           </button>
@@ -92,18 +92,19 @@ export function Dashboard() {
       </div>
 
       {/* Zacharia question of the day */}
-      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5">
-        <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2">
-          שאלת זכריה של היום — מה האדם מבפנים לא רואה?
+      <div className="bg-white rounded-xl p-5 shadow-card border border-slate-200/80 border-r-4 border-r-amber-400">
+        <p className="text-xs font-semibold text-amber-500 uppercase tracking-widest mb-1">
+          שאלת זכריה
         </p>
-        <p className="text-lg text-amber-900 font-medium leading-relaxed font-hebrew">
+        <p className="text-xs text-slate-400 mb-2">מה האדם מבפנים לא רואה?</p>
+        <p className="text-base text-slate-700 font-medium leading-relaxed">
           {zachariaOfDay}
         </p>
       </div>
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="תובנות סה״כ" value={insights.length} sub={`${sources.length} מקורות`} color="blue" />
+        <StatCard label="תובנות סה״כ" value={insights.length} sub={`${sources.length} מקורות`} color="indigo" />
         <StatCard label="הצלבות" value={crossRefs.length} sub={`${crossRefs.filter((r) => r.discoveredBy === 'engine').length} ממנוע`} color="green" />
         <StatCard
           label="נקודות עיוורון"
@@ -118,16 +119,16 @@ export function Dashboard() {
       {/* Status breakdown */}
       <div className="grid grid-cols-3 gap-3">
         {ALL_STATUSES.map((status) => (
-          <div key={status} className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-            <div className="text-3xl font-bold text-gray-800">{totalByStatus[status]}</div>
-            <div className="text-sm text-gray-500 mt-1">{status}</div>
+          <div key={status} className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-card text-center">
+            <div className="text-3xl font-bold text-slate-800">{totalByStatus[status]}</div>
+            <div className="text-sm text-slate-500 mt-1">{status}</div>
           </div>
         ))}
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-xl p-5 border border-gray-200">
-        <h2 className="font-semibold text-gray-700 mb-4">תובנות לפי ציר וסטטוס</h2>
+      <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-card">
+        <h2 className="font-semibold text-slate-700 mb-4">תובנות לפי ציר וסטטוס</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -147,10 +148,10 @@ export function Dashboard() {
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Recent cross-refs */}
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
+        <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-700">הצלבות אחרונות</h2>
-            <Link to="/map" className="text-sm text-blue-500 hover:text-blue-700">
+            <h2 className="font-semibold text-slate-700">הצלבות אחרונות</h2>
+            <Link to="/map" className="text-sm text-indigo-500 hover:text-indigo-700">
               כל המפה →
             </Link>
           </div>
@@ -166,10 +167,10 @@ export function Dashboard() {
         </div>
 
         {/* Blind spots summary */}
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
+        <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-700">נקודות עיוורון פתוחות</h2>
-            <Link to="/blindspots" className="text-sm text-blue-500 hover:text-blue-700">
+            <h2 className="font-semibold text-slate-700">נקודות עיוורון פתוחות</h2>
+            <Link to="/blindspots" className="text-sm text-indigo-500 hover:text-indigo-700">
               כל הרשימה →
             </Link>
           </div>
@@ -179,7 +180,7 @@ export function Dashboard() {
               <p className="text-gray-500 text-sm">לא זוהו נקודות עיוורון</p>
               <button
                 onClick={() => { detectBlindSpots(); findPatterns(); }}
-                className="mt-3 text-xs text-blue-500 hover:text-blue-700"
+                className="mt-3 text-xs text-indigo-500 hover:text-indigo-700"
               >
                 הפעל סריקה
               </button>
@@ -213,17 +214,18 @@ function StatCard({
 }: {
   label: string; value: number; sub: string; color: string; linkTo?: string;
 }) {
-  const colorMap: Record<string, string> = {
-    blue: 'text-blue-600 bg-blue-50',
-    green: 'text-green-600 bg-green-50',
-    red: 'text-red-600 bg-red-50',
-    purple: 'text-purple-600 bg-purple-50',
+  const colorMap: Record<string, { card: string; num: string; dot: string }> = {
+    indigo: { card: 'bg-white border-indigo-100',   num: 'text-indigo-600',  dot: 'bg-indigo-400' },
+    green:  { card: 'bg-white border-emerald-100',  num: 'text-emerald-600', dot: 'bg-emerald-400' },
+    red:    { card: 'bg-white border-red-100',       num: 'text-red-600',     dot: 'bg-red-400' },
+    purple: { card: 'bg-white border-purple-100',   num: 'text-purple-600',  dot: 'bg-purple-400' },
   };
+  const c = colorMap[color] ?? colorMap.indigo;
   const content = (
-    <div className={`rounded-xl p-4 border text-center ${colorMap[color]} border-current border-opacity-20`}>
-      <div className="text-3xl font-bold">{value}</div>
-      <div className="text-sm font-medium mt-0.5">{label}</div>
-      <div className="text-xs opacity-70 mt-0.5">{sub}</div>
+    <div className={`rounded-xl p-4 border shadow-card text-center ${c.card}`}>
+      <div className={`text-3xl font-bold ${c.num}`}>{value}</div>
+      <div className="text-sm font-medium text-slate-600 mt-0.5">{label}</div>
+      <div className="text-xs text-slate-400 mt-0.5">{sub}</div>
     </div>
   );
   return linkTo ? <Link to={linkTo}>{content}</Link> : content;

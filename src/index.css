@@ -5,7 +5,9 @@
 /* RTL base */
 html {
   direction: rtl;
-  font-family: 'David Libre', David, serif;
+  font-family: 'Heebo', 'Arial Hebrew', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Smooth scrolling */
@@ -16,23 +18,30 @@ html {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* Hebrew text improvements */
-p, textarea, input, label, button, span, li {
-  font-family: 'David Libre', David, 'Arial Hebrew', serif;
+/* Hebrew text */
+p, textarea, input, label, button, span, li, h1, h2, h3 {
+  font-family: 'Heebo', 'Arial Hebrew', sans-serif;
+}
+
+/* Smooth transitions for interactive elements */
+button, a {
+  transition-property: color, background-color, border-color, opacity, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
 /* Graph canvas */
@@ -56,8 +65,16 @@ p, textarea, input, label, button, span, li {
   animation: spin 1s linear infinite;
 }
 
-/* Focus ring fix for RTL */
+/* Focus ring — indigo */
 :focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #6366f1;
   outline-offset: 2px;
+}
+
+/* Sidebar scrollbar (dark bg) */
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
