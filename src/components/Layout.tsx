@@ -32,12 +32,12 @@ export function Layout() {
       {/* Sidebar */}
       <aside className="w-60 bg-slate-900 flex flex-col flex-shrink-0">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-slate-700/60">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" />
-            <h1 className="text-sm font-semibold text-white tracking-wide leading-none">מנוע המחקר</h1>
-          </div>
-          <p className="text-xs text-slate-500 pr-[18px]">יותם | פסנתר ופדגוגיה</p>
+        <div className="px-4 py-4 border-b border-slate-700/60">
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt="מאגר תובנות"
+            className="w-full h-auto max-h-24 object-contain"
+          />
         </div>
 
         {/* Analysis status */}
