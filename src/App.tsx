@@ -1,24 +1,23 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Dashboard } from './views/Dashboard';
-import { InsightEditor } from './views/InsightEditor';
-import { SourceManager } from './views/SourceManager';
-import { CrossRefMap } from './views/CrossRefMap';
-import { BlindSpots } from './views/BlindSpots';
-import { ZachariaReport } from './views/ZachariaReport';
+import { Home } from './views/Home';
+import { Categories } from './views/Categories';
+import { Investigations } from './views/Investigations';
+import { InsightsView } from './views/InsightsView';
+import { FinalOutputView } from './views/FinalOutputView';
+import { ResearchMap } from './views/ResearchMap';
 
 export default function App() {
   return (
     <BrowserRouter basename="/research-engine">
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="editor" element={<InsightEditor />} />
-          <Route path="editor/:id" element={<InsightEditor />} />
-          <Route path="sources" element={<SourceManager />} />
-          <Route path="map" element={<CrossRefMap />} />
-          <Route path="blindspots" element={<BlindSpots />} />
-          <Route path="report" element={<ZachariaReport />} />
+          <Route index element={<Home />} />
+          <Route path="categories" element={<Categories />} />
+          <Route path="investigations" element={<Investigations />} />
+          <Route path="insights" element={<InsightsView />} />
+          <Route path="output" element={<FinalOutputView />} />
+          <Route path="map" element={<ResearchMap />} />
         </Route>
       </Routes>
     </BrowserRouter>

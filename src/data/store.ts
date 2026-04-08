@@ -1,266 +1,175 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Insight, Source, CrossReference } from '../types/insight';
-import type { BlindSpot, Pattern } from '../types/analysis';
-import { findTextualMatches } from '../engine/textual-matcher';
-import { detectBlindSpots } from '../engine/blind-spot-detector';
-import { findPatterns } from '../engine/pattern-finder';
-import { analyzeInsightWithSources } from '../engine/semantic-analyzer';
-import seedInsights from './seed-insights.json';
-import seedSources from './seed-sources.json';
-
-interface AnalysisState {
-  isAnalyzing: boolean;
-  analysisProgress: string;
-  lastAnalyzedAt: string | null;
-}
+import { v4 as uuidv4 } from 'uuid';
+import type { Category, SubQuestion, Investigation, Insight, FinalOutput } from '../types/index';
 
 interface StoreState {
+  categories: Category[];
+  subQuestions: SubQuestion[];
+  investigations: Investigation[];
   insights: Insight[];
-  sources: Source[];
-  crossRefs: CrossReference[];
-  blindSpots: BlindSpot[];
-  patterns: Pattern[];
-  analysis: AnalysisState;
+  finalOutputs: FinalOutput[];
+
+  // Category CRUD
+  addCategory: (data: Omit<Category, 'id' | 'createdAt'>) => Category;
+  updateCategory: (id: string, updates: Partial<Omit<Category, 'id' | 'createdAt'>>) => void;
+  deleteCategory: (id: string) => void;
+
+  // SubQuestion CRUD
+  addSubQuestion: (data: Omit<SubQuestion, 'id' | 'createdAt' | 'updatedAt'>) => SubQuestion;
+  updateSubQuestion: (id: string, updates: Partial<Omit<SubQuestion, 'id' | 'createdAt' | 'updatedAt'>>) => void;
+  deleteSubQuestion: (id: string) => void;
+
+  // Investigation CRUD
+  addInvestigation: (data: Omit<Investigation, 'id' | 'createdAt' | 'updatedAt'>) => Investigation;
+  updateInvestigation: (id: string, updates: Partial<Omit<Investigation, 'id' | 'createdAt' | 'updatedAt'>>) => void;
+  deleteInvestigation: (id: string) => void;
 
   // Insight CRUD
-  addInsight: (insight: Insight) => void;
-  updateInsight: (id: string, updates: Partial<Insight>) => void;
+  addInsight: (data: Omit<Insight, 'id' | 'createdAt' | 'updatedAt'>) => Insight;
+  updateInsight: (id: string, updates: Partial<Omit<Insight, 'id' | 'createdAt' | 'updatedAt'>>) => void;
   deleteInsight: (id: string) => void;
 
-  // Source CRUD
-  addSource: (source: Source) => void;
-  updateSource: (id: string, updates: Partial<Source>) => void;
-  deleteSource: (id: string) => void;
+  // FinalOutput CRUD
+  addFinalOutput: (data: Omit<FinalOutput, 'id' | 'createdAt' | 'updatedAt'>) => FinalOutput;
+  updateFinalOutput: (id: string, updates: Partial<Omit<FinalOutput, 'id' | 'createdAt' | 'updatedAt'>>) => void;
+  deleteFinalOutput: (id: string) => void;
 
-  // CrossRef CRUD
-  addCrossRef: (ref: CrossReference) => void;
-  deleteCrossRef: (id: string) => void;
-
-  // BlindSpot CRUD
-  updateBlindSpot: (id: string, updates: Partial<BlindSpot>) => void;
-
-  // Analysis actions
-  runTextualAnalysis: (insightId: string) => void;
-  runSemanticAnalysis: (insightId: string) => Promise<void>;
-  detectBlindSpots: () => void;
-  findPatterns: () => void;
-  rescanAll: () => Promise<void>;
-
-  // Import/Export
+  // Export/Import
   exportToJSON: () => string;
   importFromJSON: (jsonStr: string) => boolean;
-
-  // Seed
-  loadSeedData: () => void;
 }
+
+const now = () => new Date().toISOString();
 
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
+      categories: [],
+      subQuestions: [],
+      investigations: [],
       insights: [],
-      sources: [],
-      crossRefs: [],
-      blindSpots: [],
-      patterns: [],
-      analysis: {
-        isAnalyzing: false,
-        analysisProgress: '',
-        lastAnalyzedAt: null,
+      finalOutputs: [],
+
+      addCategory: (data) => {
+        const item: Category = { ...data, id: uuidv4(), createdAt: now() };
+        set((s) => ({ categories: [item, ...s.categories] }));
+        return item;
+      },
+      updateCategory: (id, updates) => {
+        set((s) => ({
+          categories: s.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+        }));
+      },
+      deleteCategory: (id) => {
+        const { subQuestions, deleteSubQuestion } = get();
+        subQuestions.filter((sq) => sq.categoryId === id).forEach((sq) => deleteSubQuestion(sq.id));
+        set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
       },
 
-      addInsight: (insight) => {
-        set((state) => ({ insights: [insight, ...state.insights] }));
-        // Auto-run textual analysis
-        get().runTextualAnalysis(insight.id);
+      addSubQuestion: (data) => {
+        const item: SubQuestion = { ...data, id: uuidv4(), createdAt: now(), updatedAt: now() };
+        set((s) => ({ subQuestions: [item, ...s.subQuestions] }));
+        return item;
+      },
+      updateSubQuestion: (id, updates) => {
+        set((s) => ({
+          subQuestions: s.subQuestions.map((sq) =>
+            sq.id === id ? { ...sq, ...updates, updatedAt: now() } : sq
+          ),
+        }));
+      },
+      deleteSubQuestion: (id) => {
+        const { investigations, deleteInvestigation } = get();
+        investigations.filter((inv) => inv.subQuestionId === id).forEach((inv) => deleteInvestigation(inv.id));
+        set((s) => ({ subQuestions: s.subQuestions.filter((sq) => sq.id !== id) }));
       },
 
+      addInvestigation: (data) => {
+        const item: Investigation = { ...data, id: uuidv4(), createdAt: now(), updatedAt: now() };
+        set((s) => ({ investigations: [item, ...s.investigations] }));
+        return item;
+      },
+      updateInvestigation: (id, updates) => {
+        set((s) => ({
+          investigations: s.investigations.map((inv) =>
+            inv.id === id ? { ...inv, ...updates, updatedAt: now() } : inv
+          ),
+        }));
+      },
+      deleteInvestigation: (id) => {
+        const { insights, deleteInsight } = get();
+        insights.filter((ins) => ins.investigationId === id).forEach((ins) => deleteInsight(ins.id));
+        set((s) => ({ investigations: s.investigations.filter((inv) => inv.id !== id) }));
+      },
+
+      addInsight: (data) => {
+        const item: Insight = { ...data, id: uuidv4(), createdAt: now(), updatedAt: now() };
+        set((s) => ({ insights: [item, ...s.insights] }));
+        return item;
+      },
       updateInsight: (id, updates) => {
-        set((state) => ({
-          insights: state.insights.map((ins) =>
-            ins.id === id ? { ...ins, ...updates, updatedAt: new Date().toISOString() } : ins
+        set((s) => ({
+          insights: s.insights.map((ins) =>
+            ins.id === id ? { ...ins, ...updates, updatedAt: now() } : ins
           ),
         }));
-        get().runTextualAnalysis(id);
       },
-
       deleteInsight: (id) => {
-        set((state) => ({
-          insights: state.insights.filter((ins) => ins.id !== id),
-          crossRefs: state.crossRefs.filter(
-            (ref) => ref.insightId !== id && ref.targetId !== id
+        set((s) => ({
+          insights: s.insights.filter((ins) => ins.id !== id),
+          finalOutputs: s.finalOutputs.map((fo) => ({
+            ...fo,
+            linkedInsights: fo.linkedInsights.filter((lid) => lid !== id),
+          })),
+        }));
+      },
+
+      addFinalOutput: (data) => {
+        const item: FinalOutput = { ...data, id: uuidv4(), createdAt: now(), updatedAt: now() };
+        set((s) => ({ finalOutputs: [item, ...s.finalOutputs] }));
+        return item;
+      },
+      updateFinalOutput: (id, updates) => {
+        set((s) => ({
+          finalOutputs: s.finalOutputs.map((fo) =>
+            fo.id === id ? { ...fo, ...updates, updatedAt: now() } : fo
           ),
         }));
       },
-
-      addSource: (source) => {
-        set((state) => ({ sources: [source, ...state.sources] }));
-      },
-
-      updateSource: (id, updates) => {
-        set((state) => ({
-          sources: state.sources.map((src) =>
-            src.id === id ? { ...src, ...updates } : src
-          ),
-        }));
-      },
-
-      deleteSource: (id) => {
-        set((state) => ({
-          sources: state.sources.filter((src) => src.id !== id),
-          crossRefs: state.crossRefs.filter((ref) => ref.targetId !== id),
-        }));
-      },
-
-      addCrossRef: (ref) => {
-        set((state) => {
-          // Avoid exact duplicates
-          const exists = state.crossRefs.some(
-            (r) =>
-              r.insightId === ref.insightId &&
-              r.targetId === ref.targetId &&
-              r.type === ref.type
-          );
-          if (exists) return state;
-          return { crossRefs: [ref, ...state.crossRefs] };
-        });
-      },
-
-      deleteCrossRef: (id) => {
-        set((state) => ({
-          crossRefs: state.crossRefs.filter((ref) => ref.id !== id),
-        }));
-      },
-
-      updateBlindSpot: (id, updates) => {
-        set((state) => ({
-          blindSpots: state.blindSpots.map((bs) =>
-            bs.id === id ? { ...bs, ...updates } : bs
-          ),
-        }));
-      },
-
-      runTextualAnalysis: (insightId) => {
-        const { insights, sources, addCrossRef } = get();
-        const insight = insights.find((ins) => ins.id === insightId);
-        if (!insight) return;
-
-        const newRefs = findTextualMatches(insight, insights, sources);
-        newRefs.forEach((ref) => addCrossRef(ref));
-      },
-
-      runSemanticAnalysis: async (insightId) => {
-        const { insights, sources, addCrossRef } = get();
-        const insight = insights.find((ins) => ins.id === insightId);
-        if (!insight) return;
-
-        set((state) => ({
-          analysis: {
-            ...state.analysis,
-            isAnalyzing: true,
-            analysisProgress: `מנתח תובנה: ${insight.content.slice(0, 40)}...`,
-          },
-        }));
-
-        try {
-          const newRefs = await analyzeInsightWithSources(insight, insights, sources);
-          newRefs.forEach((ref) => addCrossRef(ref));
-        } finally {
-          set((state) => ({
-            analysis: {
-              ...state.analysis,
-              isAnalyzing: false,
-              analysisProgress: '',
-              lastAnalyzedAt: new Date().toISOString(),
-            },
-          }));
-        }
-      },
-
-      detectBlindSpots: () => {
-        const { insights, sources, crossRefs } = get();
-        const spots = detectBlindSpots(insights, sources, crossRefs);
-        set({ blindSpots: spots });
-      },
-
-      findPatterns: () => {
-        const { insights, crossRefs } = get();
-        const pats = findPatterns(insights, crossRefs);
-        set({ patterns: pats });
-      },
-
-      rescanAll: async () => {
-        const { insights, runTextualAnalysis, detectBlindSpots: detect, findPatterns: fp } = get();
-
-        set((state) => ({
-          analysis: { ...state.analysis, isAnalyzing: true, analysisProgress: 'סריקה מחדש של כל התובנות...' },
-        }));
-
-        // Clear all engine-discovered cross-refs
-        set((state) => ({
-          crossRefs: state.crossRefs.filter((ref) => ref.discoveredBy === 'manual'),
-        }));
-
-        // Re-run textual on each insight with small delay to avoid blocking UI
-        for (const insight of insights) {
-          runTextualAnalysis(insight.id);
-          await new Promise((r) => setTimeout(r, 10));
-        }
-
-        detect();
-        fp();
-
-        set((state) => ({
-          analysis: { ...state.analysis, isAnalyzing: false, analysisProgress: '', lastAnalyzedAt: new Date().toISOString() },
-        }));
+      deleteFinalOutput: (id) => {
+        set((s) => ({ finalOutputs: s.finalOutputs.filter((fo) => fo.id !== id) }));
       },
 
       exportToJSON: () => {
-        const { insights, sources, crossRefs, blindSpots, patterns } = get();
-        return JSON.stringify({ insights, sources, crossRefs, blindSpots, patterns }, null, 2);
+        const { categories, subQuestions, investigations, insights, finalOutputs } = get();
+        return JSON.stringify({ categories, subQuestions, investigations, insights, finalOutputs }, null, 2);
       },
-
       importFromJSON: (jsonStr) => {
         try {
           const data = JSON.parse(jsonStr);
-          if (!data.insights || !data.sources) return false;
+          if (!data.categories) return false;
           set({
+            categories: data.categories ?? [],
+            subQuestions: data.subQuestions ?? [],
+            investigations: data.investigations ?? [],
             insights: data.insights ?? [],
-            sources: data.sources ?? [],
-            crossRefs: data.crossRefs ?? [],
-            blindSpots: data.blindSpots ?? [],
-            patterns: data.patterns ?? [],
+            finalOutputs: data.finalOutputs ?? [],
           });
           return true;
         } catch {
           return false;
         }
       },
-
-      loadSeedData: () => {
-        const state = get();
-        if (state.insights.length > 0 || state.sources.length > 0) return;
-        set({
-          insights: seedInsights as Insight[],
-          sources: seedSources as Source[],
-        });
-        // Run textual analysis on seed insights
-        setTimeout(() => {
-          const { insights, runTextualAnalysis, detectBlindSpots: detect, findPatterns: fp } = get();
-          insights.forEach((ins) => runTextualAnalysis(ins.id));
-          detect();
-          fp();
-        }, 100);
-      },
     }),
     {
-      name: 'research-engine',
+      name: 'musical-thinking-v2',
       partialize: (state) => ({
+        categories: state.categories,
+        subQuestions: state.subQuestions,
+        investigations: state.investigations,
         insights: state.insights,
-        sources: state.sources,
-        crossRefs: state.crossRefs,
-        blindSpots: state.blindSpots,
-        patterns: state.patterns,
+        finalOutputs: state.finalOutputs,
       }),
     }
   )
