@@ -44,18 +44,26 @@ const LEVEL_VISIBLE: Record<NodeType, boolean> = {
   insight:       true,
 };
 
+const TYPE_LABEL: Record<NodeType, string> = {
+  root:          'שאלת מחקר',
+  category:      'קטגוריה',
+  subQuestion:   'שאלת משנה',
+  investigation: 'חקירה',
+  insight:       'תובנה',
+};
+
 export function ResearchMap() {
   const { categories, subQuestions, investigations, insights } = useStore();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [sidebar, setSidebar] = useState<SidebarItem | null>(null);
   const [visibleLevels, setVisibleLevels] = useState<Record<NodeType, boolean>>({ ...LEVEL_VISIBLE });
+  const [panelOpen, setPanelOpen] = useState(true);
 
   const buildGraph = useCallback((): { nodes: GraphNode[]; links: GraphLink[] } => {
     const nodes: GraphNode[] = [];
     const links: GraphLink[] = [];
 
-    // Root
     const rootId = '__root__';
     nodes.push({
       id: rootId,
@@ -66,7 +74,6 @@ export function ResearchMap() {
       r: NODE_RADIUS.root,
     });
 
-    // Categories
     categories.forEach((cat: Category) => {
       if (!visibleLevels.category) return;
       nodes.push({
@@ -81,7 +88,6 @@ export function ResearchMap() {
       links.push({ source: rootId, target: `cat_${cat.id}` });
     });
 
-    // Sub-questions
     subQuestions.forEach((sq: SubQuestion) => {
       if (!visibleLevels.subQuestion) return;
       const cat = categories.find((c: Category) => c.id === sq.categoryId);
@@ -101,7 +107,6 @@ export function ResearchMap() {
       }
     });
 
-    // Investigations
     investigations.forEach((inv: Investigation) => {
       if (!visibleLevels.investigation) return;
       const sq = subQuestions.find((s: SubQuestion) => s.id === inv.subQuestionId);
@@ -124,7 +129,6 @@ export function ResearchMap() {
       }
     });
 
-    // Insights
     if (visibleLevels.insight && insights.length <= 200) {
       insights.forEach((ins: Insight) => {
         const inv = investigations.find((i: Investigation) => i.id === ins.investigationId);
@@ -168,7 +172,6 @@ export function ResearchMap() {
 
     const g = svg.append('g');
 
-    // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
@@ -177,7 +180,6 @@ export function ResearchMap() {
     svg.call(zoom);
 
     const { nodes, links } = buildGraph();
-
     if (nodes.length === 0) return;
 
     const simulation = d3
@@ -201,7 +203,6 @@ export function ResearchMap() {
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide<GraphNode>().radius((d) => d.r + 8));
 
-    // Links
     const link = g
       .append('g')
       .selectAll('line')
@@ -209,9 +210,8 @@ export function ResearchMap() {
       .join('line')
       .attr('stroke', '#cbd5e1')
       .attr('stroke-width', 1.2)
-      .attr('stroke-opacity', 0.7);
+      .attr('stroke-opacity', 0.6);
 
-    // Node groups
     const node = g
       .append('g')
       .selectAll<SVGGElement, GraphNode>('g')
@@ -249,7 +249,6 @@ export function ResearchMap() {
         setSidebar({ type: d.type, label, extra, color: d.color });
       });
 
-    // Circles
     node
       .append('circle')
       .attr('r', (d) => d.r)
@@ -260,7 +259,6 @@ export function ResearchMap() {
       .attr('stroke', (d) => (d.type === 'root' ? '#6366f1' : d.color))
       .attr('stroke-width', (d) => (d.type === 'root' ? 3 : 1.5));
 
-    // Labels — only for larger nodes
     node
       .filter((d) => d.type !== 'insight')
       .append('text')
@@ -321,65 +319,68 @@ export function ResearchMap() {
     1;
 
   return (
-    <div className="flex h-full" dir="rtl">
+    <div className="flex h-full relative" dir="rtl">
       {/* Controls panel */}
-      <div className="w-52 bg-white border-l border-slate-200 flex-shrink-0 flex flex-col p-4 gap-4 z-10 overflow-y-auto">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">מפת מחקר</h2>
-          <p className="text-xs text-slate-500">{totalNodes} צמתים מוצגים</p>
-        </div>
+      {panelOpen && (
+        <div className="w-48 bg-white border-l border-slate-200 flex-shrink-0 flex flex-col p-4 gap-5 z-10 overflow-y-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">מפת מחקר</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{totalNodes} צמתים</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPanelOpen(false)}
+              className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-xl leading-none"
+              title="סגור"
+            >×</button>
+          </div>
 
-        {/* Level toggles */}
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-slate-600 mb-1">הצג שכבות</p>
-          {LEVEL_LABELS.map(([type, label]) => (
-            <label key={type} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={visibleLevels[type]}
-                onChange={() => toggleLevel(type)}
-                className="rounded"
-              />
-              <span className="text-xs text-slate-700">{label}</span>
-            </label>
-          ))}
-        </div>
-
-        {/* Category legend */}
-        {categories.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-slate-600 mb-1">קטגוריות</p>
-            {categories.map((cat) => (
-              <div key={cat.id} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                <span className="text-xs text-slate-700 truncate">{cat.name}</span>
-              </div>
+          {/* Layer toggles */}
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-slate-500 mb-2">שכבות</p>
+            {LEVEL_LABELS.map(([type, label]) => (
+              <label key={type} className="flex items-center gap-2.5 cursor-pointer min-h-[44px]">
+                <input
+                  type="checkbox"
+                  checked={visibleLevels[type]}
+                  onChange={() => toggleLevel(type)}
+                  className="rounded w-4 h-4 accent-indigo-600"
+                />
+                <span className="text-sm text-slate-700">{label}</span>
+              </label>
             ))}
           </div>
-        )}
 
-        {/* Node size legend */}
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-slate-600 mb-1">גודל צמתים</p>
-          {([
-            ['root', 'שאלת מחקר'],
-            ['category', 'קטגוריה'],
-            ['subQuestion', 'שאלת משנה'],
-            ['investigation', 'חקירה'],
-            ['insight', 'תובנה'],
-          ] as [NodeType, string][]).map(([type, label]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div
-                className="rounded-full bg-slate-400 flex-shrink-0"
-                style={{ width: NODE_RADIUS[type] * 0.7, height: NODE_RADIUS[type] * 0.7 }}
-              />
-              <span className="text-xs text-slate-600">{label}</span>
+          {/* Category legend */}
+          {categories.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-slate-500 mb-2">קטגוריות</p>
+              {categories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-2.5 min-h-[32px]">
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="text-sm text-slate-700 truncate">{cat.name}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
 
-        <p className="text-xs text-slate-400">גלגל עכבר לזום, גרור לסובב</p>
-      </div>
+          <p className="text-xs text-slate-400 mt-auto pt-2">גרור צמתים • צבוט לזום</p>
+        </div>
+      )}
+
+      {/* Open panel button (shown when panel closed) */}
+      {!panelOpen && (
+        <button
+          type="button"
+          onClick={() => setPanelOpen(true)}
+          className="absolute top-4 right-4 z-20 w-11 h-11 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-700 hover:bg-slate-50 flex items-center justify-center text-lg"
+          title="פתח פאנל"
+        >
+          ☰
+        </button>
+      )}
 
       {/* Graph canvas */}
       <div ref={containerRef} className="flex-1 relative bg-slate-50 overflow-hidden">
@@ -390,27 +391,24 @@ export function ResearchMap() {
         )}
         <svg ref={svgRef} className="w-full h-full" />
 
-        {/* Sidebar overlay on node click */}
+        {/* Node info overlay */}
         {sidebar && (
-          <div className="absolute top-4 left-4 w-72 bg-white rounded-xl shadow-lg border border-slate-200 p-4">
-            <div className="flex items-start gap-2 mb-3">
-              <div className="w-3 h-3 rounded-full mt-1 flex-shrink-0" style={{ backgroundColor: sidebar.color }} />
+          <div className="absolute top-4 left-4 w-72 max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-slate-200 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: sidebar.color }} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-500 uppercase mb-1">
-                  {sidebar.type === 'root' ? 'שאלת מחקר' :
-                   sidebar.type === 'category' ? 'קטגוריה' :
-                   sidebar.type === 'subQuestion' ? 'שאלת משנה' :
-                   sidebar.type === 'investigation' ? 'חקירה' : 'תובנה'}
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                  {TYPE_LABEL[sidebar.type]}
                 </p>
-                <p className="text-sm text-slate-800 leading-relaxed">{sidebar.label}</p>
+                <p className="text-base text-slate-800 leading-relaxed">{sidebar.label}</p>
                 {sidebar.extra && sidebar.extra !== sidebar.label && (
-                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">{sidebar.extra}</p>
+                  <p className="text-sm text-slate-500 mt-2 leading-relaxed">{sidebar.extra}</p>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => setSidebar(null)}
-                className="text-slate-400 hover:text-slate-700 flex-shrink-0 text-lg leading-none"
+                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg flex-shrink-0 text-xl leading-none"
               >×</button>
             </div>
           </div>
