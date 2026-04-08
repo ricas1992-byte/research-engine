@@ -18,6 +18,17 @@ export const CATEGORY_COLORS = [
 
 export type InvestigationStatus = 'גולמי' | 'בעבודה' | 'הושלמה';
 export type InsightStatus = 'גולמי' | 'מעובד' | 'מוכן';
+export type RawMaterialType = 'doc' | 'pdf' | 'audio' | 'image' | 'other';
+
+export interface RawMaterial {
+  id: string;
+  title: string;
+  url: string;
+  source: 'gdrive';
+  type: RawMaterialType;
+  addedAt: string;
+  notes?: string;
+}
 
 export interface Category {
   id: string;
@@ -42,6 +53,7 @@ export interface Investigation {
   title: string;
   content: string;
   status: InvestigationStatus;
+  rawMaterials?: RawMaterial[];
   createdAt: string;
   updatedAt: string;
 }

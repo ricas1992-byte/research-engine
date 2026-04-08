@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import type { Category, SubQuestion, Investigation, Insight, FinalOutput } from '../types/index';
+import type { Category, SubQuestion, Investigation, Insight, FinalOutput, RawMaterial } from '../types/index';
 
 interface StoreState {
   categories: Category[];
@@ -34,6 +34,11 @@ interface StoreState {
   addFinalOutput: (data: Omit<FinalOutput, 'id' | 'createdAt' | 'updatedAt'>) => FinalOutput;
   updateFinalOutput: (id: string, updates: Partial<Omit<FinalOutput, 'id' | 'createdAt' | 'updatedAt'>>) => void;
   deleteFinalOutput: (id: string) => void;
+
+  // RawMaterial CRUD (nested inside Investigation)
+  addRawMaterial: (investigationId: string, data: Omit<RawMaterial, 'id' | 'addedAt'>) => void;
+  deleteRawMaterial: (investigationId: string, materialId: string) => void;
+  updateRawMaterial: (investigationId: string, materialId: string, updates: Partial<Omit<RawMaterial, 'id' | 'addedAt'>>) => void;
 
   // Export/Import
   exportToJSON: () => string;
@@ -139,6 +144,40 @@ export const useStore = create<StoreState>()(
       },
       deleteFinalOutput: (id) => {
         set((s) => ({ finalOutputs: s.finalOutputs.filter((fo) => fo.id !== id) }));
+      },
+
+      addRawMaterial: (investigationId, data) => {
+        const material: RawMaterial = { ...data, id: uuidv4(), addedAt: now() };
+        set((s) => ({
+          investigations: s.investigations.map((inv) =>
+            inv.id === investigationId
+              ? { ...inv, rawMaterials: [...(inv.rawMaterials ?? []), material] }
+              : inv
+          ),
+        }));
+      },
+      deleteRawMaterial: (investigationId, materialId) => {
+        set((s) => ({
+          investigations: s.investigations.map((inv) =>
+            inv.id === investigationId
+              ? { ...inv, rawMaterials: (inv.rawMaterials ?? []).filter((m) => m.id !== materialId) }
+              : inv
+          ),
+        }));
+      },
+      updateRawMaterial: (investigationId, materialId, updates) => {
+        set((s) => ({
+          investigations: s.investigations.map((inv) =>
+            inv.id === investigationId
+              ? {
+                  ...inv,
+                  rawMaterials: (inv.rawMaterials ?? []).map((m) =>
+                    m.id === materialId ? { ...m, ...updates } : m
+                  ),
+                }
+              : inv
+          ),
+        }));
       },
 
       exportToJSON: () => {
