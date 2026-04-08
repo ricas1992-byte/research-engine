@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../data/store';
-import type { InvestigationStatus } from '../types/index';
+import type { InvestigationStatus, RawMaterialType } from '../types/index';
 
 const STATUS_OPTIONS: InvestigationStatus[] = ['גולמי', 'בעבודה', 'הושלמה'];
 
@@ -9,6 +9,34 @@ const STATUS_STYLE: Record<InvestigationStatus, string> = {
   בעבודה:  'bg-amber-100 text-amber-700',
   הושלמה: 'bg-emerald-100 text-emerald-700',
 };
+
+const RAW_TYPE_OPTIONS: { value: RawMaterialType; label: string; icon: string }[] = [
+  { value: 'doc',   label: 'מסמך',   icon: '📄' },
+  { value: 'pdf',   label: 'PDF',    icon: '📋' },
+  { value: 'audio', label: 'שמע',   icon: '🎵' },
+  { value: 'image', label: 'תמונה', icon: '🖼️' },
+  { value: 'other', label: 'קובץ',  icon: '📎' },
+];
+
+function detectMaterialType(url: string): RawMaterialType {
+  const lower = url.toLowerCase();
+  if (
+    lower.includes('docs.google.com/document') ||
+    lower.includes('docs.google.com/presentation') ||
+    lower.includes('docs.google.com/spreadsheets')
+  ) return 'doc';
+  if (lower.includes('.pdf') || lower.includes('/pdf')) return 'pdf';
+  if (
+    lower.includes('.mp3') || lower.includes('.wav') || lower.includes('.m4a') ||
+    lower.includes('.ogg') || lower.includes('.flac') ||
+    lower.includes('soundcloud.com') || lower.includes('spotify.com')
+  ) return 'audio';
+  if (
+    lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.png') ||
+    lower.includes('.gif') || lower.includes('.webp') || lower.includes('.svg')
+  ) return 'image';
+  return 'other';
+}
 
 type EditForm = {
   id: string;
@@ -22,6 +50,7 @@ export function Investigations() {
   const {
     categories, subQuestions, investigations, insights,
     addInvestigation, updateInvestigation, deleteInvestigation,
+    addRawMaterial, deleteRawMaterial,
   } = useStore();
 
   const [filterCatId, setFilterCatId] = useState('');
@@ -34,6 +63,14 @@ export function Investigations() {
   const [newSqId, setNewSqId] = useState('');
 
   const [editing, setEditing] = useState<EditForm>(null);
+
+  // Raw materials UI state
+  const [openRawIds, setOpenRawIds] = useState<Set<string>>(new Set());
+  const [addingRawFor, setAddingRawFor] = useState<string | null>(null);
+  const [rmUrl, setRmUrl] = useState('');
+  const [rmTitle, setRmTitle] = useState('');
+  const [rmNotes, setRmNotes] = useState('');
+  const [rmType, setRmType] = useState<RawMaterialType>('other');
 
   const filteredCatSqs = filterCatId
     ? subQuestions.filter((sq) => sq.categoryId === filterCatId)
@@ -57,7 +94,12 @@ export function Investigations() {
 
   const handleUpdate = () => {
     if (!editing || !editing.title.trim() || !editing.subQuestionId) return;
-    updateInvestigation(editing.id, { title: editing.title.trim(), content: editing.content.trim(), status: editing.status, subQuestionId: editing.subQuestionId });
+    updateInvestigation(editing.id, {
+      title: editing.title.trim(),
+      content: editing.content.trim(),
+      status: editing.status,
+      subQuestionId: editing.subQuestionId,
+    });
     setEditing(null);
   };
 
@@ -69,6 +111,40 @@ export function Investigations() {
   };
 
   const insightCount = (invId: string) => insights.filter((ins) => ins.investigationId === invId).length;
+
+  const toggleRawSection = (invId: string) => {
+    setOpenRawIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(invId)) { next.delete(invId); } else { next.add(invId); }
+      return next;
+    });
+  };
+
+  const startAddRaw = (invId: string) => {
+    setAddingRawFor(invId);
+    setRmUrl(''); setRmTitle(''); setRmNotes(''); setRmType('other');
+  };
+
+  const handleUrlChange = (url: string) => {
+    setRmUrl(url);
+    setRmType(detectMaterialType(url));
+  };
+
+  const handleSaveRaw = (invId: string) => {
+    if (!rmUrl.trim() || !rmTitle.trim()) return;
+    addRawMaterial(invId, {
+      title: rmTitle.trim(),
+      url: rmUrl.trim(),
+      source: 'gdrive',
+      type: rmType,
+      notes: rmNotes.trim() || undefined,
+    });
+    setAddingRawFor(null);
+    setRmUrl(''); setRmTitle(''); setRmNotes(''); setRmType('other');
+  };
+
+  const typeInfo = (type: RawMaterialType) =>
+    RAW_TYPE_OPTIONS.find((o) => o.value === type) ?? RAW_TYPE_OPTIONS[4];
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6" dir="rtl">
@@ -178,6 +254,8 @@ export function Investigations() {
           const isEditing = editing?.id === inv.id;
           const sq = subQuestions.find((s) => s.id === inv.subQuestionId);
           const cat = sq ? categories.find((c) => c.id === sq.categoryId) : null;
+          const rawMaterials = inv.rawMaterials ?? [];
+          const rawOpen = openRawIds.has(inv.id);
 
           return (
             <div key={inv.id} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -229,6 +307,7 @@ export function Investigations() {
                 </div>
               ) : (
                 <>
+                  {/* Investigation header */}
                   <div className="flex items-start gap-3 p-5">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -245,7 +324,21 @@ export function Investigations() {
                       {inv.content && (
                         <p className="text-sm text-slate-600 line-clamp-3 whitespace-pre-wrap">{inv.content}</p>
                       )}
-                      <p className="text-xs text-slate-400 mt-2">{insightCount(inv.id)} תובנות</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <p className="text-xs text-slate-400">{insightCount(inv.id)} תובנות</p>
+                        <button
+                          type="button"
+                          onClick={() => toggleRawSection(inv.id)}
+                          className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1"
+                        >
+                          <span>📎</span>
+                          <span>חומרי גלם</span>
+                          {rawMaterials.length > 0 && (
+                            <span className="bg-indigo-100 text-indigo-600 rounded-full px-1.5 py-0.5 font-medium">{rawMaterials.length}</span>
+                          )}
+                          <span className="text-slate-300">{rawOpen ? '▲' : '▼'}</span>
+                        </button>
+                      </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
                       <button
@@ -260,6 +353,110 @@ export function Investigations() {
                       >🗑</button>
                     </div>
                   </div>
+
+                  {/* Raw materials section */}
+                  {rawOpen && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-slate-600">חומרי גלם</p>
+                        {addingRawFor !== inv.id && (
+                          <button
+                            type="button"
+                            onClick={() => startAddRaw(inv.id)}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+                          >
+                            + הוסף חומר גלם
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Add raw material form */}
+                      {addingRawFor === inv.id && (
+                        <div className="bg-white border border-indigo-200 rounded-lg p-4 space-y-3">
+                          <input
+                            autoFocus
+                            value={rmUrl}
+                            onChange={(e) => handleUrlChange(e.target.value)}
+                            placeholder="הדבק קישור (Google Drive, Docs, וכו')"
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            dir="ltr"
+                          />
+                          <div className="flex gap-2">
+                            <input
+                              value={rmTitle}
+                              onChange={(e) => setRmTitle(e.target.value)}
+                              placeholder="כותרת"
+                              className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <select
+                              value={rmType}
+                              onChange={(e) => setRmType(e.target.value as RawMaterialType)}
+                              className="border border-slate-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            >
+                              {RAW_TYPE_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>{o.icon} {o.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <input
+                            value={rmNotes}
+                            onChange={(e) => setRmNotes(e.target.value)}
+                            placeholder="הערה (אופציונלי)"
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveRaw(inv.id)}
+                              disabled={!rmUrl.trim() || !rmTitle.trim()}
+                              className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >שמור</button>
+                            <button
+                              type="button"
+                              onClick={() => setAddingRawFor(null)}
+                              className="px-4 py-1.5 text-slate-600 rounded-lg text-sm hover:bg-slate-100"
+                            >ביטול</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Materials list */}
+                      {rawMaterials.length === 0 && addingRawFor !== inv.id && (
+                        <p className="text-xs text-slate-400 text-center py-2">אין חומרי גלם עדיין</p>
+                      )}
+                      <div className="space-y-2">
+                        {rawMaterials.map((mat) => {
+                          const info = typeInfo(mat.type);
+                          return (
+                            <div key={mat.id} className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2.5 group">
+                              <span className="text-base flex-shrink-0">{info.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <a
+                                  href={mat.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-indigo-700 hover:underline truncate block"
+                                >
+                                  {mat.title}
+                                </a>
+                                {mat.notes && (
+                                  <p className="text-xs text-slate-400 truncate mt-0.5">{mat.notes}</p>
+                                )}
+                              </div>
+                              <span className="text-xs text-slate-300 flex-shrink-0">{info.label}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`למחוק "${mat.title}"?`)) deleteRawMaterial(inv.id, mat.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 rounded flex-shrink-0 transition-opacity"
+                              >✕</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
