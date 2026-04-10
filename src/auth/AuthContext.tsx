@@ -1,31 +1,73 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
-const SESSION_KEY = 'mt-session';
-const CREDENTIALS_KEY = 'mt-credentials';
-const FAILED_ATTEMPTS_KEY = 'mt-failed-attempts';
-const LOCKOUT_UNTIL_KEY = 'mt-lockout-until';
+// ─── Storage keys ──────────────────────────────────────────────────────────
+const SESSION_KEY  = 'mt-session';
+const CRED_KEY     = 'mt-cred-v2';      // fresh key – avoids stale SHA-256 data
+const FAILED_KEY   = 'mt-failed';
+const LOCKOUT_KEY  = 'mt-lockout';
 
-const MAX_FAILED = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_FAILED  = 5;
+const LOCKOUT_MS  = 15 * 60 * 1000; // 15 min
 
-// Default credentials (hashed on first boot)
-const DEFAULT_EMAIL = 'ricas1992@gmail.com';
+// ─── Default credentials ────────────────────────────────────────────────────
+const DEFAULT_EMAIL    = 'ricas1992@gmail.com';
 const DEFAULT_PASSWORD = 'ricas1992';
 
-async function sha256(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text + '::mt-salt-v1');
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+// ─── Credential encoding (synchronous, no crypto.subtle required) ───────────
+// Stores email (plain) + a derived token.
+// btoa is safe here: all current chars are ASCII.
+// For Unicode passwords in the future, use encodeURIComponent first.
+function makeToken(email: string, password: string): string {
+  const raw = email.toLowerCase().trim() + '\x01' + password;
+  try {
+    return btoa(raw);
+  } catch {
+    // Fallback for non-Latin chars: percent-encode then btoa
+    return btoa(
+      encodeURIComponent(raw).replace(
+        /%([0-9A-F]{2})/gi,
+        (_, hex: string) => String.fromCharCode(parseInt(hex, 16))
+      )
+    );
+  }
 }
 
-interface Credentials {
-  emailHash: string;
-  passwordHash: string;
+interface StoredCreds {
+  email: string;  // lowercase, for display / changePassword
+  token: string;  // makeToken(email, password)
 }
 
+function readCreds(): StoredCreds | null {
+  try {
+    const raw = localStorage.getItem(CRED_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredCreds;
+  } catch {
+    return null;
+  }
+}
+
+function writeCreds(email: string, password: string): void {
+  try {
+    const creds: StoredCreds = {
+      email: email.toLowerCase().trim(),
+      token: makeToken(email, password),
+    };
+    localStorage.setItem(CRED_KEY, JSON.stringify(creds));
+  } catch { /* localStorage unavailable */ }
+}
+
+// Run once at module load (synchronous) so credentials are ready before render
+function ensureDefaultCreds(): void {
+  try {
+    if (!localStorage.getItem(CRED_KEY)) {
+      writeCreds(DEFAULT_EMAIL, DEFAULT_PASSWORD);
+    }
+  } catch { /* localStorage unavailable */ }
+}
+ensureDefaultCreds();
+
+// ─── Context ────────────────────────────────────────────────────────────────
 interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
@@ -36,86 +78,84 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function initDefaultCredentials(): Promise<void> {
-  const stored = localStorage.getItem(CREDENTIALS_KEY);
-  if (stored) return; // already configured
-  const emailHash = await sha256(DEFAULT_EMAIL.toLowerCase().trim());
-  const passwordHash = await sha256(DEFAULT_PASSWORD);
-  localStorage.setItem(CREDENTIALS_KEY, JSON.stringify({ emailHash, passwordHash }));
-}
-
+// ─── Provider ────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [remainingLockoutSeconds, setRemainingLockoutSeconds] = useState(0);
+  // Restore session synchronously (no async init needed)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(SESSION_KEY) === 'active';
+    } catch {
+      return false;
+    }
+  });
 
-  // Init: set up default credentials and restore session
-  useEffect(() => {
-    let cancelled = false;
-    initDefaultCredentials().then(() => {
-      if (cancelled) return;
-      const session = sessionStorage.getItem(SESSION_KEY);
-      if (session === 'active') setIsAuthenticated(true);
-      setReady(true);
-    });
-    return () => { cancelled = true; };
-  }, []);
+  const [remainingLockoutSeconds, setRemainingLockoutSeconds] = useState(0);
 
   // Lockout countdown timer
   useEffect(() => {
     const tick = () => {
-      const until = Number(localStorage.getItem(LOCKOUT_UNTIL_KEY) ?? 0);
-      const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-      setRemainingLockoutSeconds(remaining);
+      try {
+        const until = Number(localStorage.getItem(LOCKOUT_KEY) ?? 0);
+        setRemainingLockoutSeconds(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+      } catch {
+        setRemainingLockoutSeconds(0);
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
-    // Check lockout
-    const lockoutUntil = Number(localStorage.getItem(LOCKOUT_UNTIL_KEY) ?? 0);
-    if (Date.now() < lockoutUntil) {
-      const sec = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      return { ok: false, error: `חשבון נעול. נסה שוב בעוד ${sec} שניות` };
-    }
-
-    const stored = localStorage.getItem(CREDENTIALS_KEY);
-    if (!stored) return { ok: false, error: 'שגיאת מערכת: לא נמצאו פרטי גישה' };
-
-    const { emailHash, passwordHash } = JSON.parse(stored) as Credentials;
-
-    const [inputEmailHash, inputPasswordHash] = await Promise.all([
-      sha256(email.toLowerCase().trim()),
-      sha256(password),
-    ]);
-
-    if (inputEmailHash !== emailHash || inputPasswordHash !== passwordHash) {
-      const attempts = Number(localStorage.getItem(FAILED_ATTEMPTS_KEY) ?? 0) + 1;
-      localStorage.setItem(FAILED_ATTEMPTS_KEY, String(attempts));
-      if (attempts >= MAX_FAILED) {
-        localStorage.setItem(LOCKOUT_UNTIL_KEY, String(Date.now() + LOCKOUT_MS));
-        localStorage.setItem(FAILED_ATTEMPTS_KEY, '0');
-        return { ok: false, error: `יותר מדי ניסיונות כושלים. חשבון נעול ל-15 דקות` };
+  const login = useCallback(async (
+    email: string,
+    password: string,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      // ── Lockout check ──────────────────────────────────────────────────
+      const lockoutUntil = Number(localStorage.getItem(LOCKOUT_KEY) ?? 0);
+      if (Date.now() < lockoutUntil) {
+        const sec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+        return { ok: false, error: `חשבון נעול. נסה שוב בעוד ${sec} שניות` };
       }
-      const remaining = MAX_FAILED - attempts;
-      return {
-        ok: false,
-        error: `אימייל או סיסמה שגויים. נותרו ${remaining} ניסיונות`,
-      };
-    }
 
-    // Success
-    localStorage.setItem(FAILED_ATTEMPTS_KEY, '0');
-    localStorage.removeItem(LOCKOUT_UNTIL_KEY);
-    sessionStorage.setItem(SESSION_KEY, 'active');
-    setIsAuthenticated(true);
-    return { ok: true };
+      // ── Credential comparison ──────────────────────────────────────────
+      const stored = readCreds();
+      if (!stored) {
+        // Should not happen – ensureDefaultCreds ran at module load.
+        // Re-init and ask user to retry.
+        writeCreds(DEFAULT_EMAIL, DEFAULT_PASSWORD);
+        return { ok: false, error: 'שגיאת מערכת: רענן את הדף ונסה שוב' };
+      }
+
+      const inputToken = makeToken(email, password);
+
+      if (inputToken !== stored.token) {
+        const attempts = Number(localStorage.getItem(FAILED_KEY) ?? 0) + 1;
+        localStorage.setItem(FAILED_KEY, String(attempts));
+        if (attempts >= MAX_FAILED) {
+          localStorage.setItem(LOCKOUT_KEY, String(Date.now() + LOCKOUT_MS));
+          localStorage.setItem(FAILED_KEY, '0');
+          return { ok: false, error: 'יותר מדי ניסיונות כושלים. חשבון נעול ל-15 דקות' };
+        }
+        return {
+          ok: false,
+          error: `אימייל או סיסמה שגויים. נותרו ${MAX_FAILED - attempts} ניסיונות`,
+        };
+      }
+
+      // ── Success ────────────────────────────────────────────────────────
+      localStorage.setItem(FAILED_KEY, '0');
+      localStorage.removeItem(LOCKOUT_KEY);
+      sessionStorage.setItem(SESSION_KEY, 'active');
+      setIsAuthenticated(true);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'שגיאה לא צפויה. נסה לרענן את הדף' };
+    }
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem(SESSION_KEY);
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
     setIsAuthenticated(false);
   }, []);
 
@@ -123,21 +163,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     currentPassword: string,
     newPassword: string,
   ): Promise<{ ok: boolean; error?: string }> => {
-    const stored = localStorage.getItem(CREDENTIALS_KEY);
-    if (!stored) return { ok: false, error: 'שגיאת מערכת' };
+    try {
+      const stored = readCreds();
+      if (!stored) return { ok: false, error: 'שגיאת מערכת' };
 
-    const { emailHash, passwordHash } = JSON.parse(stored) as Credentials;
-    const currentHash = await sha256(currentPassword);
+      const currentToken = makeToken(stored.email, currentPassword);
+      if (currentToken !== stored.token) return { ok: false, error: 'הסיסמה הנוכחית שגויה' };
+      if (newPassword.trim().length < 6) return { ok: false, error: 'הסיסמה החדשה חייבת להיות לפחות 6 תווים' };
 
-    if (currentHash !== passwordHash) return { ok: false, error: 'הסיסמה הנוכחית שגויה' };
-    if (newPassword.length < 6) return { ok: false, error: 'הסיסמה החדשה חייבת להיות לפחות 6 תווים' };
-
-    const newHash = await sha256(newPassword);
-    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify({ emailHash, passwordHash: newHash }));
-    return { ok: true };
+      writeCreds(stored.email, newPassword);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'שגיאה' };
+    }
   }, []);
-
-  if (!ready) return null; // wait for async init
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout, changePassword, remainingLockoutSeconds }}>
