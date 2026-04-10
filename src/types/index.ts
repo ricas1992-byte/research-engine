@@ -43,6 +43,7 @@ export interface SubQuestion {
   text: string;
   categoryId: string;
   description?: string;
+  order: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +53,7 @@ export interface Investigation {
   subQuestionId: string;
   title: string;
   content: string;
+  findings?: string;
   status: InvestigationStatus;
   rawMaterials?: RawMaterial[];
   createdAt: string;
@@ -73,6 +75,18 @@ export interface FinalOutput {
   content: string;
   format: string;
   linkedInsights: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SourceExcerpt {
+  id: string;
+  quotedText: string;
+  materialId: string;
+  materialTitle: string;
+  investigationId: string;
+  investigationTitle: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }

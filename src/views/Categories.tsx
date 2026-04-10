@@ -16,7 +16,9 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
           title={`בחר צבע ${c}`}
           aria-label={`בחר צבע ${c}`}
           onClick={() => onChange(c)}
-          className={`w-6 h-6 rounded-full border-2 transition-transform ${value === c ? 'border-slate-800 scale-125' : 'border-transparent hover:scale-110'}`}
+          className={`w-6 h-6 rounded-full border-2 transition-transform ${
+            value === c ? 'border-slate-800 scale-125' : 'border-transparent hover:scale-110'
+          }`}
           style={{ backgroundColor: c }}
         />
       ))}
@@ -29,6 +31,7 @@ export function Categories() {
     categories, subQuestions,
     addCategory, updateCategory, deleteCategory,
     addSubQuestion, updateSubQuestion, deleteSubQuestion,
+    moveSubQuestionUp, moveSubQuestionDown,
   } = useStore();
 
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -53,13 +56,21 @@ export function Categories() {
 
   const handleUpdateCategory = () => {
     if (!editingCat || !editingCat.name.trim()) return;
-    updateCategory(editingCat.id, { name: editingCat.name.trim(), description: editingCat.description.trim() || undefined, color: editingCat.color });
+    updateCategory(editingCat.id, {
+      name: editingCat.name.trim(),
+      description: editingCat.description.trim() || undefined,
+      color: editingCat.color,
+    });
     setEditingCat(null);
   };
 
   const handleAddSubQ = (categoryId: string) => {
     if (!newSubQText.trim()) return;
-    addSubQuestion({ text: newSubQText.trim(), categoryId, description: newSubQDesc.trim() || undefined });
+    addSubQuestion({
+      text: newSubQText.trim(),
+      categoryId,
+      description: newSubQDesc.trim() || undefined,
+    });
     setNewSubQText('');
     setNewSubQDesc('');
     setAddingSubQFor(null);
@@ -67,11 +78,17 @@ export function Categories() {
 
   const handleUpdateSubQ = () => {
     if (!editingSubQ || !editingSubQ.text.trim()) return;
-    updateSubQuestion(editingSubQ.id, { text: editingSubQ.text.trim(), description: editingSubQ.description.trim() || undefined });
+    updateSubQuestion(editingSubQ.id, {
+      text: editingSubQ.text.trim(),
+      description: editingSubQ.description.trim() || undefined,
+    });
     setEditingSubQ(null);
   };
 
-  const getSubQs = (catId: string) => subQuestions.filter((sq) => sq.categoryId === catId);
+  const getSubQsSorted = (catId: string) =>
+    subQuestions
+      .filter((sq) => sq.categoryId === catId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6" dir="rtl">
@@ -111,26 +128,43 @@ export function Categories() {
             <ColorPicker value={newCatColor} onChange={setNewCatColor} />
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={handleAddCategory} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700">שמור</button>
-            <button type="button" onClick={() => setShowAddCategory(false)} className="px-4 py-1.5 text-slate-600 rounded-lg text-sm hover:bg-slate-100">ביטול</button>
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+            >
+              שמור
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddCategory(false)}
+              className="px-4 py-1.5 text-slate-600 rounded-lg text-sm hover:bg-slate-100"
+            >
+              ביטול
+            </button>
           </div>
         </div>
       )}
 
-      {/* Categories list */}
       {categories.length === 0 && !showAddCategory && (
-        <p className="text-slate-400 text-sm text-center py-8">אין קטגוריות עדיין. לחץ "קטגוריה חדשה" להתחיל.</p>
+        <p className="text-slate-400 text-sm text-center py-8">
+          אין קטגוריות עדיין. לחץ "קטגוריה חדשה" להתחיל.
+        </p>
       )}
 
+      {/* Categories list */}
       {categories.map((cat) => {
-        const sqs = getSubQs(cat.id);
+        const sqs = getSubQsSorted(cat.id);
         const isEditingCat = editingCat?.id === cat.id;
 
         return (
           <div key={cat.id} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             {/* Category header */}
             <div className="flex items-start gap-3 p-5 border-b border-slate-100">
-              <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: cat.color }} />
+              <div
+                className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
+                style={{ backgroundColor: cat.color }}
+              />
               {isEditingCat ? (
                 <div className="flex-1 space-y-2">
                   <input
@@ -147,16 +181,33 @@ export function Categories() {
                     rows={2}
                     className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                   />
-                  <ColorPicker value={editingCat.color} onChange={(c) => setEditingCat({ ...editingCat, color: c })} />
+                  <ColorPicker
+                    value={editingCat.color}
+                    onChange={(c) => setEditingCat({ ...editingCat, color: c })}
+                  />
                   <div className="flex gap-2 mt-2">
-                    <button type="button" onClick={handleUpdateCategory} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700">שמור</button>
-                    <button type="button" onClick={() => setEditingCat(null)} className="px-3 py-1 text-slate-600 rounded-lg text-xs hover:bg-slate-100">ביטול</button>
+                    <button
+                      type="button"
+                      onClick={handleUpdateCategory}
+                      className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700"
+                    >
+                      שמור
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingCat(null)}
+                      className="px-3 py-1 text-slate-600 rounded-lg text-xs hover:bg-slate-100"
+                    >
+                      ביטול
+                    </button>
                   </div>
                 </div>
               ) : (
                 <div className="flex-1">
                   <h3 className="font-semibold text-slate-800">{cat.name}</h3>
-                  {cat.description && <p className="text-sm text-slate-500 mt-0.5">{cat.description}</p>}
+                  {cat.description && (
+                    <p className="text-sm text-slate-500 mt-0.5">{cat.description}</p>
+                  )}
                   <p className="text-xs text-slate-400 mt-1">{sqs.length} שאלות משנה</p>
                 </div>
               )}
@@ -164,27 +215,73 @@ export function Categories() {
                 <div className="flex gap-1 flex-shrink-0">
                   <button
                     type="button"
-                    onClick={() => setEditingCat({ id: cat.id, name: cat.name, description: cat.description ?? '', color: cat.color })}
+                    onClick={() =>
+                      setEditingCat({
+                        id: cat.id,
+                        name: cat.name,
+                        description: cat.description ?? '',
+                        color: cat.color,
+                      })
+                    }
                     className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
                     title="ערוך קטגוריה"
-                  >✏</button>
+                  >
+                    ✏
+                  </button>
                   <button
                     type="button"
-                    onClick={() => { if (confirm(`למחוק קטגוריה "${cat.name}" וכל שאלות המשנה שלה?`)) deleteCategory(cat.id); }}
+                    onClick={() => {
+                      if (confirm(`למחוק קטגוריה "${cat.name}" וכל שאלות המשנה שלה?`))
+                        deleteCategory(cat.id);
+                    }}
                     className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                     title="מחק קטגוריה"
-                  >🗑</button>
+                  >
+                    🗑
+                  </button>
                 </div>
               )}
             </div>
 
             {/* Sub-questions */}
             <div className="p-4 space-y-2">
-              {sqs.map((sq) => {
+              {sqs.map((sq, idx) => {
                 const isEditingSq = editingSubQ?.id === sq.id;
+                const isFirst = idx === 0;
+                const isLast = idx === sqs.length - 1;
+
                 return (
-                  <div key={sq.id} className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2.5">
-                    <span className="text-slate-400 mt-0.5 flex-shrink-0">❓</span>
+                  <div
+                    key={sq.id}
+                    className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2.5"
+                  >
+                    {/* Order controls */}
+                    {!isEditingSq && (
+                      <div className="flex flex-col items-center gap-0.5 flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-semibold text-indigo-600 w-5 text-center leading-none mb-1">
+                          {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => moveSubQuestionUp(sq.id)}
+                          disabled={isFirst}
+                          className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded disabled:opacity-25 disabled:cursor-not-allowed text-xs leading-none"
+                          title="הזז למעלה"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveSubQuestionDown(sq.id)}
+                          disabled={isLast}
+                          className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded disabled:opacity-25 disabled:cursor-not-allowed text-xs leading-none"
+                          title="הזז למטה"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    )}
+
                     {isEditingSq ? (
                       <div className="flex-1 space-y-2">
                         <textarea
@@ -197,32 +294,63 @@ export function Categories() {
                         />
                         <input
                           value={editingSubQ.description}
-                          onChange={(e) => setEditingSubQ({ ...editingSubQ, description: e.target.value })}
+                          onChange={(e) =>
+                            setEditingSubQ({ ...editingSubQ, description: e.target.value })
+                          }
                           placeholder="הקשר/רקע (אופציונלי)"
                           className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                         <div className="flex gap-2">
-                          <button type="button" onClick={handleUpdateSubQ} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700">שמור</button>
-                          <button type="button" onClick={() => setEditingSubQ(null)} className="px-3 py-1 text-slate-600 rounded-lg text-xs hover:bg-slate-100">ביטול</button>
+                          <button
+                            type="button"
+                            onClick={handleUpdateSubQ}
+                            className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700"
+                          >
+                            שמור
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingSubQ(null)}
+                            className="px-3 py-1 text-slate-600 rounded-lg text-xs hover:bg-slate-100"
+                          >
+                            ביטול
+                          </button>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm text-slate-700">{sq.text}</p>
-                          {sq.description && <p className="text-xs text-slate-400 mt-0.5">{sq.description}</p>}
+                          {sq.description && (
+                            <p className="text-xs text-slate-400 mt-0.5">{sq.description}</p>
+                          )}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
                           <button
                             type="button"
-                            onClick={() => setEditingSubQ({ id: sq.id, text: sq.text, description: sq.description ?? '' })}
+                            onClick={() =>
+                              setEditingSubQ({
+                                id: sq.id,
+                                text: sq.text,
+                                description: sq.description ?? '',
+                              })
+                            }
                             className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded"
-                          >✏</button>
+                            title="ערוך"
+                          >
+                            ✏
+                          </button>
                           <button
                             type="button"
-                            onClick={() => { if (confirm('למחוק שאלת משנה זו וכל החקירות שלה?')) deleteSubQuestion(sq.id); }}
+                            onClick={() => {
+                              if (confirm('למחוק שאלת משנה זו וכל החקירות שלה?'))
+                                deleteSubQuestion(sq.id);
+                            }}
                             className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                          >🗑</button>
+                            title="מחק"
+                          >
+                            🗑
+                          </button>
                         </div>
                       </>
                     )}
@@ -248,8 +376,24 @@ export function Categories() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => handleAddSubQ(cat.id)} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700">הוסף שאלה</button>
-                    <button type="button" onClick={() => { setAddingSubQFor(null); setNewSubQText(''); setNewSubQDesc(''); }} className="px-3 py-1.5 text-slate-600 rounded-lg text-xs hover:bg-slate-100">ביטול</button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSubQ(cat.id)}
+                      className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700"
+                    >
+                      הוסף שאלה
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddingSubQFor(null);
+                        setNewSubQText('');
+                        setNewSubQDesc('');
+                      }}
+                      className="px-3 py-1.5 text-slate-600 rounded-lg text-xs hover:bg-slate-100"
+                    >
+                      ביטול
+                    </button>
                   </div>
                 </div>
               ) : (

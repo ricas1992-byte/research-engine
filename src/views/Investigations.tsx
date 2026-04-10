@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../data/store';
 import type { InvestigationStatus, RawMaterialType } from '../types/index';
 
@@ -103,13 +104,6 @@ export function Investigations() {
     setEditing(null);
   };
 
-  const getSqLabel = (sqId: string) => {
-    const sq = subQuestions.find((s) => s.id === sqId);
-    if (!sq) return '—';
-    const cat = categories.find((c) => c.id === sq.categoryId);
-    return cat ? `${cat.name} / ${sq.text}` : sq.text;
-  };
-
   const insightCount = (invId: string) => insights.filter((ins) => ins.investigationId === invId).length;
 
   const toggleRawSection = (invId: string) => {
@@ -172,6 +166,7 @@ export function Investigations() {
           <select
             value={filterCatId}
             onChange={(e) => { setFilterCatId(e.target.value); setFilterSqId(''); }}
+            title="סנן לפי קטגוריה"
             className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
           >
             <option value="">כל הקטגוריות</option>
@@ -182,6 +177,7 @@ export function Investigations() {
           <select
             value={filterSqId}
             onChange={(e) => setFilterSqId(e.target.value)}
+            title="סנן לפי שאלת משנה"
             className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
           >
             <option value="">כל השאלות</option>
@@ -197,6 +193,7 @@ export function Investigations() {
         <div className="bg-white border border-indigo-200 rounded-xl p-5 shadow-sm space-y-3">
           <h3 className="font-semibold text-slate-800">חקירה חדשה</h3>
           <select
+            title="בחר שאלת משנה"
             value={newSqId}
             onChange={(e) => setNewSqId(e.target.value)}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -262,6 +259,7 @@ export function Investigations() {
               {isEditing ? (
                 <div className="p-5 space-y-3">
                   <select
+                    title="בחר שאלת משנה"
                     value={editing.subQuestionId}
                     onChange={(e) => setEditing({ ...editing, subQuestionId: e.target.value })}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -341,15 +339,22 @@ export function Investigations() {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
+                      <Link
+                        to={`/investigations/${inv.id}`}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm"
+                        title="פתח עמוד ייעודי"
+                      >↗</Link>
                       <button
                         type="button"
                         onClick={() => setEditing({ id: inv.id, title: inv.title, content: inv.content, status: inv.status, subQuestionId: inv.subQuestionId })}
                         className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                        title="ערוך"
                       >✏</button>
                       <button
                         type="button"
                         onClick={() => { if (confirm(`למחוק חקירה "${inv.title}" וכל התובנות שלה?`)) deleteInvestigation(inv.id); }}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        title="מחק"
                       >🗑</button>
                     </div>
                   </div>
@@ -389,6 +394,7 @@ export function Investigations() {
                               className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                             <select
+                              title="סוג חומר גלם"
                               value={rmType}
                               onChange={(e) => setRmType(e.target.value as RawMaterialType)}
                               className="border border-slate-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
