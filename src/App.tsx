@@ -14,7 +14,10 @@ import type { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const sessionActive = (() => {
+    try { return sessionStorage.getItem('mt-session') === 'active'; } catch { return false; }
+  })();
+  if (!isAuthenticated && !sessionActive) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 

@@ -19,7 +19,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
           className={`w-6 h-6 rounded-full border-2 transition-transform ${
             value === c ? 'border-slate-800 scale-125' : 'border-transparent hover:scale-110'
           }`}
-          style={{ backgroundColor: c }}
+          data-color={c}
         />
       ))}
     </div>
@@ -163,6 +163,7 @@ export function Categories() {
             <div className="flex items-start gap-3 p-5 border-b border-slate-100">
               <div
                 className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
+                data-color={cat.color}
                 style={{ backgroundColor: cat.color }}
               />
               {isEditingCat ? (

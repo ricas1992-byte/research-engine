@@ -19,17 +19,13 @@ const DEFAULT_PASSWORD = 'ricas1992';
 // For Unicode passwords in the future, use encodeURIComponent first.
 function makeToken(email: string, password: string): string {
   const raw = email.toLowerCase().trim() + '\x01' + password;
-  try {
-    return btoa(raw);
-  } catch {
-    // Fallback for non-Latin chars: percent-encode then btoa
-    return btoa(
-      encodeURIComponent(raw).replace(
-        /%([0-9A-F]{2})/gi,
-        (_, hex: string) => String.fromCharCode(parseInt(hex, 16))
-      )
-    );
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(raw);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
+  return btoa(binary);
 }
 
 interface StoredCreds {
@@ -60,7 +56,8 @@ function writeCreds(email: string, password: string): void {
 // Run once at module load (synchronous) so credentials are ready before render
 function ensureDefaultCreds(): void {
   try {
-    if (!localStorage.getItem(CRED_KEY)) {
+    const existing = readCreds();
+    if (!existing || !existing.token || existing.email !== DEFAULT_EMAIL.toLowerCase()) {
       writeCreds(DEFAULT_EMAIL, DEFAULT_PASSWORD);
     }
   } catch { /* localStorage unavailable */ }

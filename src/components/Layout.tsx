@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useStore } from '../data/store';
 import { useAuth } from '../auth/AuthContext';
 import { useState } from 'react';
@@ -20,6 +20,7 @@ export function Layout() {
     exportToJSON, importFromJSON,
   } = useStore();
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const [showImport, setShowImport] = useState(false);
   const [importError, setImportError] = useState('');
@@ -155,7 +156,7 @@ export function Layout() {
           {/* Logout */}
           <button
             type="button"
-            onClick={() => { if (confirm('להתנתק?')) logout(); }}
+            onClick={() => { if (confirm('להתנתק?')) { logout(); navigate('/login', { replace: true }); } }}
             className="w-full text-xs bg-slate-800/70 hover:bg-red-900/50 text-slate-500 hover:text-red-400 py-1.5 rounded-lg transition-colors"
           >
             התנתקות

@@ -1,24 +1,55 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginView() {
-  const { login, remainingLockoutSeconds } = useAuth();
+  const { login, isAuthenticated, remainingLockoutSeconds } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  const handleResetCredentials = () => {
+    if (!confirm('זה יאפס את הסיסמה לברירת המחדל. להמשיך?')) return;
+    localStorage.removeItem('mt-cred-v2');
+    localStorage.removeItem('mt-lockout');
+    localStorage.removeItem('mt-failed');
+    sessionStorage.removeItem('mt-session');
+    setError('פרטי הגישה אופסו. כנס עם: ricas1992@gmail.com / ricas1992');
+    setEmail('ricas1992@gmail.com');
+    setPassword('');
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (loading || remainingLockoutSeconds > 0) return;
+    // Read directly from DOM to catch autofill values that bypassed onChange/onInput
+    const actualEmail = emailRef.current?.value ?? email;
+    const actualPassword = passwordRef.current?.value ?? password;
+    if (!actualEmail || !actualPassword) return;
+    if (actualEmail !== email) setEmail(actualEmail);
+    if (actualPassword !== password) setPassword(actualPassword);
     setError('');
     setLoading(true);
-    const result = await login(email.trim(), password);
+    const result = await login(actualEmail.trim(), actualPassword.trim());
     setLoading(false);
     if (!result.ok) {
       setError(result.error ?? 'שגיאה לא ידועה');
+    } else {
+      // Full page reload — eliminates all React state race conditions.
+      // sessionStorage already has 'mt-session=active' so the app loads authenticated.
+      window.location.replace('/research-engine/');
     }
   };
 
@@ -46,9 +77,11 @@ export function LoginView() {
                     אימייל
                   </label>
                   <input
+                    ref={emailRef}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
                     placeholder="your@email.com"
                     required
                     dir="ltr"
@@ -63,9 +96,11 @@ export function LoginView() {
                     סיסמה
                   </label>
                   <input
+                    ref={passwordRef}
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
                     placeholder="••••••••"
                     required
                     dir="ltr"
@@ -105,6 +140,13 @@ export function LoginView() {
                   className="text-sm text-slate-500 hover:text-indigo-600 underline"
                 >
                   שכחתי סיסמה
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetCredentials}
+                  className="block mx-auto mt-2 text-xs text-slate-400 hover:text-red-500 underline"
+                >
+                  אפס נתוני גישה (כניסה עם ברירת מחדל)
                 </button>
               </div>
             </>
