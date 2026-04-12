@@ -2,12 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import type {
-  Category, SubQuestion, Investigation, Insight,
+  Category, SubCategory, SubQuestion, Investigation, Insight,
   FinalOutput, RawMaterial, SourceExcerpt,
 } from '../types/index';
 
 interface StoreState {
   categories: Category[];
+  subCategories: SubCategory[];
   subQuestions: SubQuestion[];
   investigations: Investigation[];
   insights: Insight[];
@@ -18,6 +19,17 @@ interface StoreState {
   addCategory: (data: Omit<Category, 'id' | 'createdAt'>) => Category;
   updateCategory: (id: string, updates: Partial<Omit<Category, 'id' | 'createdAt'>>) => void;
   deleteCategory: (id: string) => void;
+
+  // SubCategory CRUD + ordering
+  addSubCategory: (categoryId: string, data: Omit<SubCategory, 'id' | 'categoryId' | 'order' | 'createdAt' | 'updatedAt'>) => SubCategory;
+  updateSubCategory: (id: string, updates: Partial<Omit<SubCategory, 'id' | 'categoryId' | 'createdAt' | 'updatedAt'>>) => void;
+  deleteSubCategory: (id: string) => void;
+  reorderSubCategories: (categoryId: string, orderedIds: string[]) => void;
+
+  // SubCategory selectors
+  getSubCategoriesByCategory: (categoryId: string) => SubCategory[];
+  getSubQuestionsBySubCategory: (subCategoryId: string) => SubQuestion[];
+  getDirectSubQuestionsByCategory: (categoryId: string) => SubQuestion[];
 
   // SubQuestion CRUD + ordering
   addSubQuestion: (data: Omit<SubQuestion, 'id' | 'order' | 'createdAt' | 'updatedAt'>) => SubQuestion;
@@ -62,6 +74,7 @@ export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       categories: [],
+      subCategories: [],
       subQuestions: [],
       investigations: [],
       insights: [],
@@ -81,20 +94,88 @@ export const useStore = create<StoreState>()(
       },
       deleteCategory: (id) => {
         const { subQuestions, deleteSubQuestion } = get();
+        // Remove all sub-categories belonging to this category
+        set((s) => ({ subCategories: s.subCategories.filter((sc) => sc.categoryId !== id) }));
         subQuestions.filter((sq) => sq.categoryId === id).forEach((sq) => deleteSubQuestion(sq.id));
         set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
       },
 
+      // ─── SubCategories ────────────────────────────────────────
+      addSubCategory: (categoryId, data) => {
+        const { subCategories } = get();
+        const maxOrder = subCategories
+          .filter((sc) => sc.categoryId === categoryId)
+          .reduce((max, sc) => Math.max(max, sc.order ?? 0), -1);
+        const item: SubCategory = {
+          ...data,
+          id: uuidv4(),
+          categoryId,
+          order: maxOrder + 1,
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        set((s) => ({ subCategories: [...s.subCategories, item] }));
+        return item;
+      },
+      updateSubCategory: (id, updates) => {
+        set((s) => ({
+          subCategories: s.subCategories.map((sc) =>
+            sc.id === id ? { ...sc, ...updates, updatedAt: now() } : sc
+          ),
+        }));
+      },
+      deleteSubCategory: (id) => {
+        // Reassign all SubQuestions of this SubCategory to the parent Category (subCategoryId → null)
+        set((s) => ({
+          subCategories: s.subCategories.filter((sc) => sc.id !== id),
+          subQuestions: s.subQuestions.map((sq) =>
+            sq.subCategoryId === id ? { ...sq, subCategoryId: null, updatedAt: now() } : sq
+          ),
+        }));
+      },
+      reorderSubCategories: (categoryId, orderedIds) => {
+        set((s) => ({
+          subCategories: s.subCategories.map((sc) => {
+            if (sc.categoryId !== categoryId) return sc;
+            const idx = orderedIds.indexOf(sc.id);
+            return idx === -1 ? sc : { ...sc, order: idx, updatedAt: now() };
+          }),
+        }));
+      },
+
+      // ─── SubCategory selectors ────────────────────────────────
+      getSubCategoriesByCategory: (categoryId) =>
+        get()
+          .subCategories.filter((sc) => sc.categoryId === categoryId)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+
+      getSubQuestionsBySubCategory: (subCategoryId) =>
+        get()
+          .subQuestions.filter((sq) => sq.subCategoryId === subCategoryId)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+
+      getDirectSubQuestionsByCategory: (categoryId) =>
+        get()
+          .subQuestions.filter(
+            (sq) => sq.categoryId === categoryId && (sq.subCategoryId == null)
+          )
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+
       // ─── SubQuestions ─────────────────────────────────────────
       addSubQuestion: (data) => {
         const { subQuestions } = get();
-        const categoryMax = subQuestions
-          .filter((sq) => sq.categoryId === data.categoryId)
+        // Order within the same group (subCategory or direct-to-category)
+        const groupMax = subQuestions
+          .filter((sq) =>
+            sq.categoryId === data.categoryId &&
+            (sq.subCategoryId ?? null) === (data.subCategoryId ?? null)
+          )
           .reduce((max, sq) => Math.max(max, sq.order ?? 0), -1);
         const item: SubQuestion = {
           ...data,
+          subCategoryId: data.subCategoryId ?? null,
           id: uuidv4(),
-          order: categoryMax + 1,
+          order: groupMax + 1,
           createdAt: now(),
           updatedAt: now(),
         };
@@ -117,12 +198,15 @@ export const useStore = create<StoreState>()(
         set((s) => {
           const sq = s.subQuestions.find((q) => q.id === id);
           if (!sq) return {};
+          // Sort within same group (same subCategoryId)
           const sorted = [...s.subQuestions]
-            .filter((q) => q.categoryId === sq.categoryId)
+            .filter((q) =>
+              q.categoryId === sq.categoryId &&
+              (q.subCategoryId ?? null) === (sq.subCategoryId ?? null)
+            )
             .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
           const idx = sorted.findIndex((q) => q.id === id);
           if (idx <= 0) return {};
-          // swap
           const updated = sorted.map((q, i) => {
             if (i === idx - 1) return { ...q, order: sorted[idx].order ?? idx, updatedAt: now() };
             if (i === idx)     return { ...q, order: sorted[idx - 1].order ?? (idx - 1), updatedAt: now() };
@@ -141,7 +225,10 @@ export const useStore = create<StoreState>()(
           const sq = s.subQuestions.find((q) => q.id === id);
           if (!sq) return {};
           const sorted = [...s.subQuestions]
-            .filter((q) => q.categoryId === sq.categoryId)
+            .filter((q) =>
+              q.categoryId === sq.categoryId &&
+              (q.subCategoryId ?? null) === (sq.subCategoryId ?? null)
+            )
             .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
           const idx = sorted.findIndex((q) => q.id === id);
           if (idx < 0 || idx >= sorted.length - 1) return {};
@@ -276,9 +363,9 @@ export const useStore = create<StoreState>()(
 
       // ─── Export / Import ─────────────────────────────────────
       exportToJSON: () => {
-        const { categories, subQuestions, investigations, insights, finalOutputs, sourceExcerpts } = get();
+        const { categories, subCategories, subQuestions, investigations, insights, finalOutputs, sourceExcerpts } = get();
         return JSON.stringify(
-          { categories, subQuestions, investigations, insights, finalOutputs, sourceExcerpts },
+          { categories, subCategories, subQuestions, investigations, insights, finalOutputs, sourceExcerpts },
           null,
           2
         );
@@ -287,12 +374,17 @@ export const useStore = create<StoreState>()(
         try {
           const data = JSON.parse(jsonStr);
           if (!data.categories) return false;
-          // Migrate: ensure all subQuestions have an order field
+          // Migrate: ensure all subQuestions have order, subCategoryId
           const migratedSQs: SubQuestion[] = (data.subQuestions ?? []).map(
-            (sq: SubQuestion, idx: number) => ({ ...sq, order: sq.order ?? idx })
+            (sq: SubQuestion, idx: number) => ({
+              ...sq,
+              order: sq.order ?? idx,
+              subCategoryId: sq.subCategoryId ?? null,
+            })
           );
           set({
             categories: data.categories ?? [],
+            subCategories: data.subCategories ?? [],
             subQuestions: migratedSQs,
             investigations: data.investigations ?? [],
             insights: data.insights ?? [],
@@ -306,19 +398,27 @@ export const useStore = create<StoreState>()(
       },
     }),
     {
-      name: 'musical-thinking-v3',
+      name: 'musical-thinking-v4',
       partialize: (state) => ({
         categories: state.categories,
+        subCategories: state.subCategories,
         subQuestions: state.subQuestions,
         investigations: state.investigations,
         insights: state.insights,
         finalOutputs: state.finalOutputs,
         sourceExcerpts: state.sourceExcerpts,
       }),
-      // Migrate existing data: add order to subQuestions that don't have it
+      // Migrate existing data on rehydrate
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        const needsMigration = state.subQuestions.some((sq) => sq.order === undefined);
+        // Ensure subCategories array exists (first load after upgrade)
+        if (!state.subCategories) {
+          state.subCategories = [];
+        }
+        // Ensure all subQuestions have order and subCategoryId
+        const needsMigration = state.subQuestions.some(
+          (sq) => sq.order === undefined || sq.subCategoryId === undefined
+        );
         if (needsMigration) {
           const categoryGroups = new Map<string, SubQuestion[]>();
           for (const sq of state.subQuestions) {
@@ -327,7 +427,13 @@ export const useStore = create<StoreState>()(
           }
           const migrated: SubQuestion[] = [];
           for (const [, sqs] of categoryGroups) {
-            sqs.forEach((sq, i) => migrated.push({ ...sq, order: sq.order ?? i }));
+            sqs.forEach((sq, i) =>
+              migrated.push({
+                ...sq,
+                order: sq.order ?? i,
+                subCategoryId: sq.subCategoryId ?? null,
+              })
+            );
           }
           state.subQuestions = migrated;
         }

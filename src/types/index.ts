@@ -38,10 +38,22 @@ export interface Category {
   createdAt: string;
 }
 
+export interface SubCategory {
+  id: string;
+  categoryId: string;
+  name: string;
+  description?: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SubQuestion {
   id: string;
   text: string;
   categoryId: string;
+  subCategoryId?: string | null;
+  number?: string;
   description?: string;
   order: number;
   createdAt: string;

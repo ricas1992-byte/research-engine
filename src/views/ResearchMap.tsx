@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import { useStore } from '../data/store';
 import { RESEARCH_QUESTION } from '../types/index';
 
-type NodeType = 'root' | 'category' | 'subQuestion' | 'investigation' | 'insight';
+type NodeType = 'root' | 'category' | 'subCategory' | 'subQuestion' | 'investigation' | 'insight';
 
 interface TreeData {
   id: string;
@@ -25,24 +25,27 @@ interface SidebarItem {
 const TYPE_LABEL: Record<NodeType, string> = {
   root: 'שאלת מחקר',
   category: 'קטגוריה',
+  subCategory: 'תת-קטגוריה',
   subQuestion: 'שאלת משנה',
   investigation: 'חקירה',
   insight: 'תובנה',
 };
 
-const LEVEL_LABELS: [keyof VisibleLevels, string][] = [
-  ['category', 'קטגוריות'],
-  ['subQuestion', 'שאלות משנה'],
-  ['investigation', 'חקירות'],
-  ['insight', 'תובנות'],
-];
-
 interface VisibleLevels {
   category: boolean;
+  subCategory: boolean;
   subQuestion: boolean;
   investigation: boolean;
   insight: boolean;
 }
+
+const LEVEL_LABELS: [keyof VisibleLevels, string][] = [
+  ['category', 'קטגוריות'],
+  ['subCategory', 'תת-קטגוריות'],
+  ['subQuestion', 'שאלות משנה'],
+  ['investigation', 'חקירות'],
+  ['insight', 'תובנות'],
+];
 
 type PNode = d3.HierarchyPointNode<TreeData>;
 
@@ -50,64 +53,112 @@ function trunc(text: string, max: number) {
   return text.length > max ? text.slice(0, max) + '…' : text;
 }
 
+// Blend category color toward white at the given ratio (0=original, 1=white)
+function lightenHex(hex: string, ratio: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lr = Math.round(r + (255 - r) * ratio);
+  const lg = Math.round(g + (255 - g) * ratio);
+  const lb = Math.round(b + (255 - b) * ratio);
+  return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
+}
+
 export function ResearchMap() {
-  const { categories, subQuestions, investigations, insights } = useStore();
+  const { categories, subCategories, subQuestions, investigations, insights,
+    getSubCategoriesByCategory, getSubQuestionsBySubCategory, getDirectSubQuestionsByCategory,
+  } = useStore();
+
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [sidebar, setSidebar] = useState<SidebarItem | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [visibleLevels, setVisibleLevels] = useState<VisibleLevels>({
     category: true,
+    subCategory: true,
     subQuestion: true,
     investigation: true,
     insight: false,
   });
 
+  const buildSubQChildren = useCallback((sq: typeof subQuestions[0], color: string): TreeData => {
+    const invNodes: TreeData[] = visibleLevels.investigation
+      ? investigations
+          .filter((inv) => inv.subQuestionId === sq.id)
+          .map((inv) => {
+            const insNodes: TreeData[] = visibleLevels.insight
+              ? insights
+                  .filter((ins) => ins.investigationId === inv.id)
+                  .slice(0, 12)
+                  .map((ins) => ({
+                    id: `ins_${ins.id}`,
+                    type: 'insight' as NodeType,
+                    label: trunc(ins.text, 18),
+                    fullLabel: ins.text,
+                    color,
+                    entityId: ins.id,
+                  }))
+              : [];
+            return {
+              id: `inv_${inv.id}`,
+              type: 'investigation' as NodeType,
+              label: trunc(inv.title, 20),
+              fullLabel: inv.title,
+              color,
+              entityId: inv.id,
+              ...(insNodes.length > 0 ? { children: insNodes } : {}),
+            };
+          })
+      : [];
+    const sqLabel = sq.number ? `${sq.number} ${trunc(sq.text, 16)}` : trunc(sq.text, 22);
+    return {
+      id: `sq_${sq.id}`,
+      type: 'subQuestion' as NodeType,
+      label: sqLabel,
+      fullLabel: sq.number ? `${sq.number} — ${sq.text}` : sq.text,
+      color,
+      entityId: sq.id,
+      ...(invNodes.length > 0 ? { children: invNodes } : {}),
+    };
+  }, [investigations, insights, visibleLevels, subQuestions]);
+
   const buildHierarchy = useCallback((): TreeData => {
     const catNodes: TreeData[] = categories.map((cat) => {
-      const sqNodes: TreeData[] = visibleLevels.subQuestion
-        ? subQuestions
-            .filter((sq) => sq.categoryId === cat.id)
-            .map((sq) => {
-              const invNodes: TreeData[] = visibleLevels.investigation
-                ? investigations
-                    .filter((inv) => inv.subQuestionId === sq.id)
-                    .map((inv) => {
-                      const insNodes: TreeData[] = visibleLevels.insight
-                        ? insights
-                            .filter((ins) => ins.investigationId === inv.id)
-                            .slice(0, 12)
-                            .map((ins) => ({
-                              id: `ins_${ins.id}`,
-                              type: 'insight' as NodeType,
-                              label: trunc(ins.text, 18),
-                              fullLabel: ins.text,
-                              color: cat.color,
-                              entityId: ins.id,
-                            }))
-                        : [];
-                      return {
-                        id: `inv_${inv.id}`,
-                        type: 'investigation' as NodeType,
-                        label: trunc(inv.title, 20),
-                        fullLabel: inv.title,
-                        color: cat.color,
-                        entityId: inv.id,
-                        ...(insNodes.length > 0 ? { children: insNodes } : {}),
-                      };
-                    })
-                : [];
-              return {
-                id: `sq_${sq.id}`,
-                type: 'subQuestion' as NodeType,
-                label: trunc(sq.text, 22),
-                fullLabel: sq.text,
-                color: cat.color,
-                entityId: sq.id,
-                ...(invNodes.length > 0 ? { children: invNodes } : {}),
-              };
-            })
-        : [];
+      if (!visibleLevels.category) return null as unknown as TreeData;
+
+      const catSubCats = getSubCategoriesByCategory(cat.id);
+      const children: TreeData[] = [];
+
+      if (visibleLevels.subQuestion) {
+        // SubCategory nodes (if visible)
+        if (visibleLevels.subCategory && catSubCats.length > 0) {
+          for (const sc of catSubCats) {
+            const scSQs = getSubQuestionsBySubCategory(sc.id);
+            const scChildren = scSQs.map((sq) => buildSubQChildren(sq, cat.color));
+            const scColor = lightenHex(cat.color, 0.45);
+            children.push({
+              id: `sc_${sc.id}`,
+              type: 'subCategory' as NodeType,
+              label: trunc(sc.name, 16),
+              fullLabel: sc.name,
+              color: scColor,
+              entityId: sc.id,
+              ...(scChildren.length > 0 ? { children: scChildren } : {}),
+            });
+          }
+        } else if (!visibleLevels.subCategory && catSubCats.length > 0) {
+          // SubCategories hidden — flatten their SQs directly under category
+          for (const sc of catSubCats) {
+            const scSQs = getSubQuestionsBySubCategory(sc.id);
+            scSQs.forEach((sq) => children.push(buildSubQChildren(sq, cat.color)));
+          }
+        }
+
+        // Direct sub-questions (no subCategory)
+        const directSQs = getDirectSubQuestionsByCategory(cat.id);
+        directSQs.forEach((sq) => children.push(buildSubQChildren(sq, cat.color)));
+      }
+
       return {
         id: `cat_${cat.id}`,
         type: 'category' as NodeType,
@@ -115,9 +166,9 @@ export function ResearchMap() {
         fullLabel: cat.name,
         color: cat.color,
         entityId: cat.id,
-        ...(sqNodes.length > 0 ? { children: sqNodes } : {}),
+        ...(children.length > 0 ? { children } : {}),
       };
-    });
+    }).filter(Boolean);
 
     return {
       id: '__root__',
@@ -128,7 +179,11 @@ export function ResearchMap() {
       entityId: '__root__',
       ...(catNodes.length > 0 ? { children: catNodes } : {}),
     };
-  }, [categories, subQuestions, investigations, insights, visibleLevels]);
+  }, [
+    categories, subCategories, subQuestions, investigations, insights, visibleLevels,
+    getSubCategoriesByCategory, getSubQuestionsBySubCategory, getDirectSubQuestionsByCategory,
+    buildSubQChildren,
+  ]);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
@@ -180,8 +235,6 @@ export function ResearchMap() {
     });
 
     // RTL: root on right, leaves grow left
-    // Screen X = cx - node.y  (flip depth axis)
-    // Screen Y = cy + node.x  (siblings spread vertically)
     const cx = width / 2 + (maxY - minY) / 2;
     const cy = height / 2 - (minX + maxX) / 2;
 
@@ -191,11 +244,7 @@ export function ResearchMap() {
     // Auto-fit initial zoom
     const treeW = maxY - minY + 240;
     const treeH = maxX - minX + 120;
-    const scale = Math.min(
-      (width - 80) / treeW,
-      (height - 80) / treeH,
-      0.95
-    );
+    const scale = Math.min((width - 80) / treeW, (height - 80) / treeH, 0.95);
     svg.call(
       zoom.transform,
       d3.zoomIdentity
@@ -279,6 +328,26 @@ export function ResearchMap() {
       .attr('pointer-events', 'none')
       .text((d) => d.data.label);
 
+    // SubCategory – smaller circle, lightened color, dashed border
+    const scNodes = nodes.filter((d) => d.data.type === 'subCategory');
+    scNodes
+      .append('circle')
+      .attr('r', 18)
+      .attr('fill', (d) => d.data.color + 'aa')
+      .attr('stroke', (d) => d.data.color)
+      .attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', '4 2');
+    scNodes
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('fill', '#374151')
+      .attr('font-size', '8px')
+      .attr('font-weight', '600')
+      .attr('font-family', 'Heebo, Arial Hebrew, sans-serif')
+      .attr('pointer-events', 'none')
+      .text((d) => d.data.label);
+
     // SubQuestion – diamond (rotated square)
     const sqNodes = nodes.filter((d) => d.data.type === 'subQuestion');
     sqNodes
@@ -319,7 +388,7 @@ export function ResearchMap() {
       .attr('pointer-events', 'none')
       .text((d) => d.data.label);
 
-    // Insight – small pill (no text – click to see in sidebar)
+    // Insight – small pill
     const insNodes = nodes.filter((d) => d.data.type === 'insight');
     insNodes
       .append('rect')
@@ -331,12 +400,11 @@ export function ResearchMap() {
       .attr('fill', (d) => d.data.color + '28')
       .attr('stroke', (d) => d.data.color + '99')
       .attr('stroke-width', 1);
-    // Tooltip dot
     insNodes
       .append('title')
       .text((d) => d.data.fullLabel);
 
-  }, [buildHierarchy, categories, subQuestions, investigations, insights]);
+  }, [buildHierarchy]);
 
   const toggleLevel = (level: keyof VisibleLevels) => {
     setVisibleLevels((prev) => ({ ...prev, [level]: !prev[level] }));
@@ -344,6 +412,7 @@ export function ResearchMap() {
 
   const totalNodes =
     (visibleLevels.category ? categories.length : 0) +
+    (visibleLevels.subCategory ? subCategories.length : 0) +
     (visibleLevels.subQuestion ? subQuestions.length : 0) +
     (visibleLevels.investigation ? investigations.length : 0) +
     (visibleLevels.insight ? Math.min(insights.length, 200) : 0) +
@@ -387,6 +456,14 @@ export function ResearchMap() {
                 shape: (
                   <svg width="18" height="18" viewBox="0 0 18 18">
                     <circle cx="9" cy="9" r="8" fill="#6366f1cc" stroke="#6366f1" strokeWidth="2" />
+                  </svg>
+                ),
+              },
+              {
+                label: 'תת-קטגוריה',
+                shape: (
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <circle cx="9" cy="9" r="7" fill="#a5b4fcaa" stroke="#a5b4fc" strokeWidth="1.5" strokeDasharray="4 2" />
                   </svg>
                 ),
               },
