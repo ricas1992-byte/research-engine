@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useStore } from '../data/store';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../features/auth/AuthProvider';
 import { useState } from 'react';
 
 const NAV_ITEMS = [
@@ -16,10 +16,10 @@ const NAV_ITEMS = [
 export function Layout() {
   const {
     categories, subQuestions, investigations, insights, finalOutputs,
-    sourceExcerpts,
+    sourceExcerpts, isLoading,
     exportToJSON, importFromJSON,
   } = useStore();
-  const { logout } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
   const [showImport, setShowImport] = useState(false);
@@ -54,12 +54,18 @@ export function Layout() {
       {/* Sidebar */}
       <aside className="w-60 bg-slate-900 flex flex-col flex-shrink-0">
         {/* Logo */}
-        <div className="px-4 py-4 border-b border-slate-700/60">
+        <div className="px-4 py-4 border-b border-slate-700/60 relative">
           <img
             src={`${import.meta.env.BASE_URL}logo.png`}
             alt="מנוע מחקר"
             className="w-full h-auto max-h-24 object-contain"
           />
+          {isLoading && (
+            <span
+              title="מסנכרן..."
+              className="absolute top-2 left-2 w-2 h-2 rounded-full bg-indigo-400 animate-pulse"
+            />
+          )}
         </div>
 
         {/* Nav */}
@@ -156,7 +162,7 @@ export function Layout() {
           {/* Logout */}
           <button
             type="button"
-            onClick={() => { if (confirm('להתנתק?')) { logout(); navigate('/login', { replace: true }); } }}
+            onClick={async () => { if (confirm('להתנתק?')) { await signOut(); navigate('/', { replace: true }); } }}
             className="w-full text-xs bg-slate-800/70 hover:bg-red-900/50 text-slate-500 hover:text-red-400 py-1.5 rounded-lg transition-colors"
           >
             התנתקות

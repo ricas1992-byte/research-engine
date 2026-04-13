@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './auth/AuthContext';
+import { useEffect, useRef } from 'react';
+import { AuthProvider, useAuth } from './features/auth/AuthProvider';
+import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { Layout } from './components/Layout';
-import { LoginView } from './views/LoginView';
 import { Home } from './views/Home';
 import { Categories } from './views/Categories';
 import { Investigations } from './views/Investigations';
@@ -10,21 +11,32 @@ import { InsightsView } from './views/InsightsView';
 import { FinalOutputView } from './views/FinalOutputView';
 import { ResearchMap } from './views/ResearchMap';
 import { SourcesView } from './views/SourcesView';
-import type { ReactNode } from 'react';
+import { useStore } from './data/store';
+import { runMigration } from './lib/migrateFromLocalStorage';
+import { startRealtime, stopRealtime } from './lib/realtime';
 
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const sessionActive = (() => {
-    try { return sessionStorage.getItem('mt-session') === 'active'; } catch { return false; }
-  })();
-  if (!isAuthenticated && !sessionActive) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
+function AppShell() {
+  const { user } = useAuth();
+  const { hydrateFromSupabase } = useStore();
+  const hydratedRef = useRef(false);
 
-function AppRoutes() {
+  useEffect(() => {
+    if (user && !hydratedRef.current) {
+      hydratedRef.current = true;
+      // Run migration (no-op if already done), then hydrate, then start realtime
+      runMigration()
+        .then(() => hydrateFromSupabase())
+        .then(() => startRealtime())
+        .catch(console.error);
+    }
+    if (!user) {
+      hydratedRef.current = false;
+      stopRealtime();
+    }
+  }, [user, hydrateFromSupabase]);
+
   return (
     <Routes>
-      <Route path="/login" element={<LoginView />} />
       <Route
         path="/"
         element={
@@ -52,7 +64,7 @@ export default function App() {
   return (
     <BrowserRouter basename="/research-engine">
       <AuthProvider>
-        <AppRoutes />
+        <AppShell />
       </AuthProvider>
     </BrowserRouter>
   );
