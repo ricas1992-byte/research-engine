@@ -1,3 +1,4 @@
+/** @deprecated — use useProjectStore().getActiveProject().researchQuestion instead */
 export const RESEARCH_QUESTION = {
   text: 'אתה מהלך בפריפריה של העולם המופלא של המוסיקה ולכן יש לך זווית ראיה ייחודית. מה אתה רואה שהאדם מבפנים לא רואה?',
   attribution: 'ד"ר זכריה פלווין',
