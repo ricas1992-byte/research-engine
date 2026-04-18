@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useStore } from '../data/store';
-import { RESEARCH_QUESTION } from '../types/index';
+import { useProjectStore } from '../data/projectStore';
 
 export function Home() {
   const { categories, subQuestions, investigations, insights, finalOutputs } = useStore();
+  const activeProject = useProjectStore((s) => s.getActiveProject());
 
   const stats = [
     { label: 'קטגוריות', value: categories.length, to: '/categories', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
@@ -16,16 +17,47 @@ export function Home() {
   const recentInsights = insights.slice(0, 5);
   const recentInvestigations = investigations.slice(0, 5);
 
+  const frameworkEntries = activeProject
+    ? Object.entries(activeProject.framework)
+    : [];
+
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8" dir="rtl">
       {/* Research Question Banner */}
       <div className="bg-gradient-to-l from-slate-800 to-slate-900 rounded-2xl p-8 shadow-lg">
-        <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-4">שאלת המחקר המרכזית</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">שאלת המחקר המרכזית</p>
+          {activeProject && (
+            <Link
+              to="/projects"
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              {activeProject.name} v{activeProject.version}
+            </Link>
+          )}
+        </div>
         <blockquote className="text-xl leading-relaxed text-white font-medium mb-6">
-          "{RESEARCH_QUESTION.text}"
+          "{activeProject?.researchQuestion ?? '...'}"
         </blockquote>
-        <p className="text-slate-400 text-sm">— {RESEARCH_QUESTION.attribution}</p>
+        {activeProject && (
+          <p className="text-slate-400 text-sm">— פרויקט הפריפריה גרסה {activeProject.version}</p>
+        )}
       </div>
+
+      {/* Conceptual Framework */}
+      {frameworkEntries.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">מסגרת מושגית</p>
+          <div className="grid grid-cols-2 gap-3">
+            {frameworkEntries.map(([term, def]) => (
+              <div key={term} className="bg-slate-50 rounded-lg p-3">
+                <p className="font-semibold text-slate-800 text-sm mb-0.5">{term}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{def}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-3">

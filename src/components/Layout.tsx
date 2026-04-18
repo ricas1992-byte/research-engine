@@ -1,10 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useStore } from '../data/store';
+import { useProjectStore } from '../data/projectStore';
 import { useAuth } from '../features/auth/AuthProvider';
 import { useState } from 'react';
 
 const NAV_ITEMS = [
   { to: '/',               label: 'בית',                 icon: '◎',  end: true  },
+  { to: '/projects',       label: 'פרויקטים',            icon: '🗂', end: false },
   { to: '/categories',     label: 'קטגוריות ושאלות',    icon: '📂', end: false },
   { to: '/investigations', label: 'חקירות',              icon: '🔍', end: false },
   { to: '/insights',       label: 'תובנות',              icon: '💡', end: false },
@@ -21,6 +23,7 @@ export function Layout() {
   } = useStore();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const activeProject = useProjectStore((s) => s.getActiveProject());
 
   const [showImport, setShowImport] = useState(false);
   const [importError, setImportError] = useState('');
@@ -65,6 +68,15 @@ export function Layout() {
               title="מסנכרן..."
               className="absolute top-2 left-2 w-2 h-2 rounded-full bg-indigo-400 animate-pulse"
             />
+          )}
+          {/* Active project badge */}
+          {activeProject && (
+            <div className="mt-2 px-2 py-1.5 bg-slate-800 rounded-lg">
+              <p className="text-xs text-slate-500 leading-none mb-0.5">פרויקט פעיל</p>
+              <p className="text-xs text-indigo-300 font-medium truncate">
+                {activeProject.name} v{activeProject.version}
+              </p>
+            </div>
           )}
         </div>
 

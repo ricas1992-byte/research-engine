@@ -11,6 +11,7 @@ import { InsightsView } from './views/InsightsView';
 import { FinalOutputView } from './views/FinalOutputView';
 import { ResearchMap } from './views/ResearchMap';
 import { SourcesView } from './views/SourcesView';
+import { ProjectsView } from './views/ProjectsView';
 import { useStore } from './data/store';
 import { runMigration } from './lib/migrateFromLocalStorage';
 import { startRealtime, stopRealtime } from './lib/realtime';
@@ -46,6 +47,7 @@ function AppShell() {
         }
       >
         <Route index element={<Home />} />
+        <Route path="projects" element={<ProjectsView />} />
         <Route path="categories" element={<Categories />} />
         <Route path="investigations" element={<Investigations />} />
         <Route path="investigations/:id" element={<InvestigationDetail />} />
