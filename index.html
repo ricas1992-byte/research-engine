@@ -14,6 +14,21 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Restore path saved by 404.html (GitHub Pages SPA routing).
+      (function () {
+        var raw = sessionStorage.getItem('spa_redirect');
+        if (!raw) return;
+        sessionStorage.removeItem('spa_redirect');
+        try {
+          var d = JSON.parse(raw);
+          var base = '/research-engine';
+          var path = d.path.startsWith(base) ? d.path.slice(base.length) : d.path;
+          if (!path) path = '/';
+          window.history.replaceState(null, '', base + path + d.search + d.hash);
+        } catch (e) { /* ignore parse errors */ }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

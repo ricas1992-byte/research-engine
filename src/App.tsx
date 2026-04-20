@@ -12,6 +12,7 @@ import { FinalOutputView } from './views/FinalOutputView';
 import { ResearchMap } from './views/ResearchMap';
 import { SourcesView } from './views/SourcesView';
 import { ProjectsView } from './views/ProjectsView';
+import { AuthCallback } from './features/auth/AuthCallback'
 import { useStore } from './data/store';
 import { runMigration } from './lib/migrateFromLocalStorage';
 import { startRealtime, stopRealtime } from './lib/realtime';
@@ -22,18 +23,21 @@ function AppShell() {
   const hydratedRef = useRef(false);
 
   useEffect(() => {
-    if (user && !hydratedRef.current) {
-      hydratedRef.current = true;
-      // Run migration (no-op if already done), then hydrate, then start realtime
-      runMigration()
-        .then(() => hydrateFromSupabase())
-        .then(() => startRealtime())
-        .catch(console.error);
-    }
     if (!user) {
       hydratedRef.current = false;
       stopRealtime();
+      return;
     }
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    let active = true;
+    runMigration()
+      .then(() => hydrateFromSupabase())
+      .then(() => { if (active) startRealtime(); })
+      .catch(console.error);
+
+    return () => { active = false; };
   }, [user, hydrateFromSupabase]);
 
   return (
@@ -56,6 +60,7 @@ function AppShell() {
         <Route path="map" element={<ResearchMap />} />
         <Route path="sources" element={<SourcesView />} />
       </Route>
+      <Route path="/auth/callback" element={<AuthCallback />} />
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

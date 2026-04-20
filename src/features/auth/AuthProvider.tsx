@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = useCallback(async (email: string): Promise<{ ok: boolean; error?: string }> => {
-    const redirectTo = `${window.location.origin}/research-engine/`
+    const redirectTo = `${window.location.origin}/research-engine/auth/callback`
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo },
