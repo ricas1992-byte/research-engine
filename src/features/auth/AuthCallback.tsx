@@ -7,14 +7,26 @@ export function AuthCallback() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (session && !error) {
+    const code = new URLSearchParams(window.location.search).get('code')
+
+    const handle = async () => {
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!error) {
+          navigate('/', { replace: true })
+          return
+        }
+      }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
         navigate('/', { replace: true })
       } else {
         setError(true)
         setTimeout(() => navigate('/', { replace: true }), 3000)
       }
-    })
+    }
+
+    handle()
   }, [navigate])
 
   return (
