@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { audit } from '../auditLog'
 import type { FinalOutput } from '../../types/index'
 import type { DbFinalOutput } from '../database.types'
 
@@ -18,8 +19,19 @@ export async function fetchAllFinalOutputs(): Promise<FinalOutput[]> {
   const { data, error } = await supabase
     .from('final_outputs')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
   if (error) throw new Error('שגיאה בטעינת תוצרים: ' + error.message)
+  return (data as DbFinalOutput[]).map(toApp)
+}
+
+export async function fetchDeletedFinalOutputs(): Promise<FinalOutput[]> {
+  const { data, error } = await supabase
+    .from('final_outputs')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+  if (error) throw new Error('שגיאה בטעינת תוצרים מאורכבים: ' + error.message)
   return (data as DbFinalOutput[]).map(toApp)
 }
 
@@ -37,7 +49,9 @@ export async function createFinalOutput(
     .select()
     .single()
   if (error) throw new Error('שגיאה ביצירת תוצר: ' + error.message)
-  return toApp(row as DbFinalOutput)
+  const saved = toApp(row as DbFinalOutput)
+  void audit('final_outputs', saved.id, 'create', { title: saved.title })
+  return saved
 }
 
 export async function updateFinalOutput(
@@ -56,10 +70,24 @@ export async function updateFinalOutput(
     .select()
     .single()
   if (error) throw new Error('שגיאה בעדכון תוצר: ' + error.message)
+  void audit('final_outputs', id, 'update', { title: updates.title })
   return toApp(row as DbFinalOutput)
 }
 
 export async function deleteFinalOutput(id: string): Promise<void> {
-  const { error } = await supabase.from('final_outputs').delete().eq('id', id)
+  const { error } = await supabase
+    .from('final_outputs')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) throw new Error('שגיאה במחיקת תוצר: ' + error.message)
+  void audit('final_outputs', id, 'soft_delete')
+}
+
+export async function restoreFinalOutput(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('final_outputs')
+    .update({ deleted_at: null })
+    .eq('id', id)
+  if (error) throw new Error('שגיאה בשחזור תוצר: ' + error.message)
+  void audit('final_outputs', id, 'restore')
 }

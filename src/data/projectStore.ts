@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  fetchCategoryProjectMap,
+  upsertCategoryProjectAssignment,
+  bulkUploadCategoryProjectMap,
+} from '../lib/api/categoryProjectMap';
+import { logger } from '../lib/logger';
 
 export interface Project {
   id: string;
@@ -53,7 +59,7 @@ const INITIAL_PROJECTS: Project[] = [
 interface ProjectStoreState {
   projects: Project[];
   activeProjectId: string;
-  /** categoryId → projectId. Categories NOT in this map belong to 'periphery-v1' by default. */
+  /** categoryId → projectId. Kept in sync with Supabase `category_project_map`. */
   categoryProjectMap: Record<string, string>;
 
   getActiveProject: () => Project | undefined;
@@ -66,7 +72,14 @@ interface ProjectStoreState {
   updateProject: (id: string, updates: Partial<Project>) => void;
   assignCategoryToProject: (categoryId: string, projectId: string) => void;
   getProjectIdForCategory: (categoryId: string) => string;
+
+  /** Pull the map from Supabase and upload any localStorage-only assignments. */
+  hydrateMapFromSupabase: () => Promise<void>;
+  /** Reset everything — called on sign-out so next user starts clean. */
+  resetToDefaults: () => void;
 }
+
+const LOCALSTORAGE_KEY = 'musical-thinking-projects';
 
 export const useProjectStore = create<ProjectStoreState>()(
   persist(
@@ -118,14 +131,51 @@ export const useProjectStore = create<ProjectStoreState>()(
           projects: s.projects.map((p) => (p.id === id ? { ...p, ...updates } : p)),
         })),
 
-      assignCategoryToProject: (categoryId, projectId) =>
+      assignCategoryToProject: (categoryId, projectId) => {
+        // Optimistic update, then persist to Supabase in the background
         set((s) => ({
           categoryProjectMap: { ...s.categoryProjectMap, [categoryId]: projectId },
-        })),
+        }));
+        upsertCategoryProjectAssignment(categoryId, projectId).catch((err) => {
+          logger.warn('projectStore', 'assignCategoryToProject failed', err);
+        });
+      },
 
       getProjectIdForCategory: (categoryId) =>
         get().categoryProjectMap[categoryId] ?? 'periphery-v1',
+
+      hydrateMapFromSupabase: async () => {
+        try {
+          const remote = await fetchCategoryProjectMap();
+          const local = get().categoryProjectMap;
+          // Upload anything that exists locally but not remotely (first login after migration)
+          const missing: Record<string, string> = {};
+          for (const [catId, projId] of Object.entries(local)) {
+            if (!(catId in remote)) missing[catId] = projId;
+          }
+          if (Object.keys(missing).length > 0) {
+            await bulkUploadCategoryProjectMap(missing);
+          }
+          // Remote wins on conflict
+          set({ categoryProjectMap: { ...local, ...remote } });
+        } catch (err) {
+          logger.warn('projectStore', 'hydrateMapFromSupabase failed', err);
+        }
+      },
+
+      resetToDefaults: () => {
+        set({
+          projects: INITIAL_PROJECTS,
+          activeProjectId: 'periphery-v2',
+          categoryProjectMap: {},
+        });
+        try {
+          localStorage.removeItem(LOCALSTORAGE_KEY);
+        } catch {
+          // Ignore — non-fatal
+        }
+      },
     }),
-    { name: 'musical-thinking-projects' }
+    { name: LOCALSTORAGE_KEY }
   )
 );

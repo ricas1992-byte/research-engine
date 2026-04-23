@@ -9,6 +9,7 @@
  */
 
 import { supabase } from './supabase'
+import { logger } from './logger'
 import {
   createCategory,
 } from './api/categories'
@@ -74,8 +75,8 @@ export async function runMigration(): Promise<void> {
   let localData: LocalData
   try {
     localData = JSON.parse(raw) as LocalData
-  } catch {
-    console.error('[Migration] Failed to parse localStorage data — leaving untouched')
+  } catch (err) {
+    logger.error('migration', `failed to parse localStorage key "${LS_KEY}" — leaving untouched`, err)
     return
   }
 
@@ -100,7 +101,7 @@ export async function runMigration(): Promise<void> {
     return
   }
 
-  console.log(`[Migration] Starting: ${categories.length} categories, ${subCategories.length} sub-categories, ${subQuestions.length} sub-questions, ${investigations.length} investigations, ${insights.length} insights, ${finalOutputs.length} final outputs, ${sourceExcerpts.length} source excerpts`)
+  logger.info('migration', `starting: ${categories.length} categories, ${subCategories.length} sub-categories, ${subQuestions.length} sub-questions, ${investigations.length} investigations, ${insights.length} insights, ${finalOutputs.length} final outputs, ${sourceExcerpts.length} source excerpts`)
 
   // ── 3. Build ID remap tables (old UUID → new UUID from Supabase) ─────────────
   const categoryIdMap    = new Map<string, string>()
@@ -202,7 +203,7 @@ export async function runMigration(): Promise<void> {
 
   } catch (err) {
     // ── Partial failure: leave localStorage completely untouched ─────────────
-    console.error('[Migration] FAILED — localStorage preserved, Supabase may have partial data. Error:', err)
+    logger.error('migration', 'FAILED — localStorage preserved, Supabase may have partial data', err)
     return
   }
 
@@ -220,5 +221,5 @@ export async function runMigration(): Promise<void> {
   // ── 6. Mark migration complete in user metadata ──────────────────────────────
   await supabase.auth.updateUser({ data: { migration_completed: true } })
 
-  console.log('[Migration] Success — all data uploaded to Supabase, localStorage cleared.')
+  logger.info('migration', 'success — all data uploaded to Supabase, localStorage cleared.')
 }

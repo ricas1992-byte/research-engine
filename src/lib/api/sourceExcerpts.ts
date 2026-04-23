@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { audit } from '../auditLog'
 import type { SourceExcerpt } from '../../types/index'
 import type { DbSourceExcerpt } from '../database.types'
 
@@ -20,8 +21,19 @@ export async function fetchAllSourceExcerpts(): Promise<SourceExcerpt[]> {
   const { data, error } = await supabase
     .from('source_excerpts')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
   if (error) throw new Error('שגיאה בטעינת ציטוטים: ' + error.message)
+  return (data as DbSourceExcerpt[]).map(toApp)
+}
+
+export async function fetchDeletedSourceExcerpts(): Promise<SourceExcerpt[]> {
+  const { data, error } = await supabase
+    .from('source_excerpts')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+  if (error) throw new Error('שגיאה בטעינת ציטוטים מאורכבים: ' + error.message)
   return (data as DbSourceExcerpt[]).map(toApp)
 }
 
@@ -41,7 +53,9 @@ export async function createSourceExcerpt(
     .select()
     .single()
   if (error) throw new Error('שגיאה ביצירת ציטוט: ' + error.message)
-  return toApp(row as DbSourceExcerpt)
+  const saved = toApp(row as DbSourceExcerpt)
+  void audit('source_excerpts', saved.id, 'create', { materialId: saved.materialId })
+  return saved
 }
 
 export async function updateSourceExcerpt(
@@ -62,10 +76,24 @@ export async function updateSourceExcerpt(
     .select()
     .single()
   if (error) throw new Error('שגיאה בעדכון ציטוט: ' + error.message)
+  void audit('source_excerpts', id, 'update', updates)
   return toApp(row as DbSourceExcerpt)
 }
 
 export async function deleteSourceExcerpt(id: string): Promise<void> {
-  const { error } = await supabase.from('source_excerpts').delete().eq('id', id)
+  const { error } = await supabase
+    .from('source_excerpts')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) throw new Error('שגיאה במחיקת ציטוט: ' + error.message)
+  void audit('source_excerpts', id, 'soft_delete')
+}
+
+export async function restoreSourceExcerpt(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('source_excerpts')
+    .update({ deleted_at: null })
+    .eq('id', id)
+  if (error) throw new Error('שגיאה בשחזור ציטוט: ' + error.message)
+  void audit('source_excerpts', id, 'restore')
 }

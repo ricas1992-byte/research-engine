@@ -20,6 +20,7 @@ export function Layout() {
     categories, subQuestions, investigations, insights, finalOutputs,
     sourceExcerpts, isLoading,
     exportToJSON, importFromJSON,
+    syncError, clearSyncError,
   } = useStore();
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -184,6 +185,22 @@ export function Layout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
+        {syncError && (
+          <div
+            role="alert"
+            className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-800 flex items-center justify-between"
+          >
+            <span>{syncError}</span>
+            <button
+              type="button"
+              onClick={clearSyncError}
+              className="text-red-600 hover:text-red-800 font-medium text-xs"
+              aria-label="סגור הודעת שגיאה"
+            >
+              סגור
+            </button>
+          </div>
+        )}
         <Outlet />
       </main>
     </div>

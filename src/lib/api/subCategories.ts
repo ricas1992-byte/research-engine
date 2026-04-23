@@ -1,4 +1,5 @@
 import { supabase } from '../supabase'
+import { audit } from '../auditLog'
 import type { SubCategory } from '../../types/index'
 import type { DbSubCategory } from '../database.types'
 
@@ -18,8 +19,19 @@ export async function fetchAllSubCategories(): Promise<SubCategory[]> {
   const { data, error } = await supabase
     .from('sub_categories')
     .select('*')
+    .is('deleted_at', null)
     .order('order', { ascending: true })
   if (error) throw new Error('שגיאה בטעינת תת-קטגוריות: ' + error.message)
+  return (data as DbSubCategory[]).map(toApp)
+}
+
+export async function fetchDeletedSubCategories(): Promise<SubCategory[]> {
+  const { data, error } = await supabase
+    .from('sub_categories')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+  if (error) throw new Error('שגיאה בטעינת תת-קטגוריות מאורכבות: ' + error.message)
   return (data as DbSubCategory[]).map(toApp)
 }
 
@@ -37,7 +49,9 @@ export async function createSubCategory(
     .select()
     .single()
   if (error) throw new Error('שגיאה ביצירת תת-קטגוריה: ' + error.message)
-  return toApp(row as DbSubCategory)
+  const saved = toApp(row as DbSubCategory)
+  void audit('sub_categories', saved.id, 'create', { name: saved.name, categoryId: saved.categoryId })
+  return saved
 }
 
 export async function updateSubCategory(
@@ -55,10 +69,24 @@ export async function updateSubCategory(
     .select()
     .single()
   if (error) throw new Error('שגיאה בעדכון תת-קטגוריה: ' + error.message)
+  void audit('sub_categories', id, 'update', updates)
   return toApp(row as DbSubCategory)
 }
 
 export async function deleteSubCategory(id: string): Promise<void> {
-  const { error } = await supabase.from('sub_categories').delete().eq('id', id)
+  const { error } = await supabase
+    .from('sub_categories')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) throw new Error('שגיאה במחיקת תת-קטגוריה: ' + error.message)
+  void audit('sub_categories', id, 'soft_delete')
+}
+
+export async function restoreSubCategory(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('sub_categories')
+    .update({ deleted_at: null })
+    .eq('id', id)
+  if (error) throw new Error('שגיאה בשחזור תת-קטגוריה: ' + error.message)
+  void audit('sub_categories', id, 'restore')
 }

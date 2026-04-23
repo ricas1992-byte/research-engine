@@ -92,6 +92,9 @@ interface StoreState {
   // Export/Import (in-memory, for JSON backup)
   exportToJSON: () => string;
   importFromJSON: (jsonStr: string) => boolean;
+
+  // Error/loading helpers
+  clearSyncError: () => void;
 }
 
 const now = () => new Date().toISOString();
@@ -581,4 +584,6 @@ export const useStore = create<StoreState>()((set, get) => ({
       return false;
     }
   },
+
+  clearSyncError: () => set({ syncError: null }),
 }));

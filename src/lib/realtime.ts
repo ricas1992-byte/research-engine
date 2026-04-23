@@ -4,7 +4,9 @@
  * Debounced 300ms per table to avoid UI flicker on rapid changes.
  */
 
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { logger } from './logger'
 import { fetchAllCategories } from './api/categories'
 import { fetchAllSubCategories } from './api/subCategories'
 import { fetchAllSubQuestions } from './api/subQuestions'
@@ -36,7 +38,6 @@ const TABLES: TableName[] = [
 const debounceTimers = new Map<TableName, ReturnType<typeof setTimeout>>()
 
 async function refreshTable(table: TableName): Promise<void> {
-  const store = useStore.getState()
   try {
     switch (table) {
       case 'categories': {
@@ -76,9 +77,8 @@ async function refreshTable(table: TableName): Promise<void> {
       }
     }
   } catch (err) {
-    // Silently ignore realtime refresh errors (user's own mutations handle their own errors)
-    void store
-    console.warn('[Realtime] Refresh failed for', table, err)
+    logger.warn('realtime', `refresh failed for ${table}`, err)
+    useStore.setState({ syncError: 'הסנכרון נכשל — רענן את הדף ידנית' })
   }
 }
 
@@ -87,37 +87,51 @@ function debounceRefresh(table: TableName): void {
   if (existing) clearTimeout(existing)
   const timer = setTimeout(() => {
     debounceTimers.delete(table)
-    refreshTable(table)
+    void refreshTable(table)
   }, 300)
   debounceTimers.set(table, timer)
 }
 
-let channel: ReturnType<typeof supabase.channel> | null = null
+let channel: RealtimeChannel | null = null
 
 export function startRealtime(): void {
-  if (channel) return // already started
+  if (channel) return
 
-  channel = supabase.channel('db-changes')
+  const ch = supabase.channel('db-changes')
 
+  // supabase-js v2's typing for `on('postgres_changes', ...)` is awkward;
+  // we accept the untyped builder but still constrain the payload via TABLES.
+  const withPostgresChanges = ch as unknown as {
+    on: (
+      event: 'postgres_changes',
+      filter: { event: '*'; schema: 'public'; table: TableName },
+      callback: () => void,
+    ) => typeof withPostgresChanges
+    subscribe: (cb: (status: string) => void) => RealtimeChannel
+  }
+
+  let builder = withPostgresChanges
   for (const table of TABLES) {
-    channel.on(
-      // @ts-expect-error supabase typing for postgres_changes requires literal event strings
+    builder = builder.on(
       'postgres_changes',
       { event: '*', schema: 'public', table },
-      () => debounceRefresh(table)
+      () => debounceRefresh(table),
     )
   }
 
-  channel.subscribe((status) => {
+  channel = builder.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
-      console.log('[Realtime] Subscribed to all tables')
+      logger.info('realtime', 'subscribed to all tables')
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      logger.warn('realtime', 'channel status', status)
+      useStore.setState({ syncError: 'הסנכרון בזמן אמת נפל — רענן את הדף' })
     }
   })
 }
 
 export function stopRealtime(): void {
   if (channel) {
-    supabase.removeChannel(channel)
+    void supabase.removeChannel(channel)
     channel = null
   }
   for (const timer of debounceTimers.values()) {

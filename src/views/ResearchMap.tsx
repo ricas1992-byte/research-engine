@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { useStore } from '../data/store';
-import { RESEARCH_QUESTION } from '../types/index';
+import { useProjectStore } from '../data/projectStore';
 
 type NodeType = 'root' | 'category' | 'subCategory' | 'subQuestion' | 'investigation' | 'insight';
 
@@ -68,6 +68,8 @@ export function ResearchMap() {
   const { categories, subCategories, subQuestions, investigations, insights,
     getSubCategoriesByCategory, getSubQuestionsBySubCategory, getDirectSubQuestionsByCategory,
   } = useStore();
+  const activeProject = useProjectStore((s) => s.getActiveProject());
+  const researchQuestionText = activeProject?.researchQuestion ?? 'שאלת המחקר';
 
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -120,7 +122,7 @@ export function ResearchMap() {
       entityId: sq.id,
       ...(invNodes.length > 0 ? { children: invNodes } : {}),
     };
-  }, [investigations, insights, visibleLevels, subQuestions]);
+  }, [investigations, insights, visibleLevels]);
 
   const buildHierarchy = useCallback((): TreeData => {
     const catNodes: TreeData[] = categories.map((cat) => {
@@ -174,15 +176,15 @@ export function ResearchMap() {
       id: '__root__',
       type: 'root',
       label: 'שאלת\nהמחקר',
-      fullLabel: RESEARCH_QUESTION.text,
+      fullLabel: researchQuestionText,
       color: '#1e293b',
       entityId: '__root__',
       ...(catNodes.length > 0 ? { children: catNodes } : {}),
     };
   }, [
-    categories, subCategories, subQuestions, investigations, insights, visibleLevels,
+    categories, visibleLevels,
     getSubCategoriesByCategory, getSubQuestionsBySubCategory, getDirectSubQuestionsByCategory,
-    buildSubQChildren,
+    buildSubQChildren, researchQuestionText,
   ]);
 
   useEffect(() => {
@@ -282,8 +284,8 @@ export function ResearchMap() {
       .on('click', (_e, d) => {
         setSidebar({
           type: d.data.type,
-          label: d.data.type === 'root' ? RESEARCH_QUESTION.text : d.data.fullLabel,
-          extra: d.data.type === 'root' ? RESEARCH_QUESTION.attribution : undefined,
+          label: d.data.type === 'root' ? researchQuestionText : d.data.fullLabel,
+          extra: undefined,
           color: d.data.color,
         });
       });
@@ -404,7 +406,7 @@ export function ResearchMap() {
       .append('title')
       .text((d) => d.data.fullLabel);
 
-  }, [buildHierarchy]);
+  }, [buildHierarchy, researchQuestionText]);
 
   const toggleLevel = (level: keyof VisibleLevels) => {
     setVisibleLevels((prev) => ({ ...prev, [level]: !prev[level] }));
