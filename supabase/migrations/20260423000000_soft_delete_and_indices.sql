@@ -37,7 +37,7 @@ create index if not exists insights_investigation_id_idx on insights(investigati
 -- category_project_map — migrated from localStorage to Supabase
 -- ────────────────────────────────────────────────────────────
 create table if not exists category_project_map (
-  user_id     uuid not null references auth.users(id) on delete cascade,
+  user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   category_id uuid not null,
   project_id  text not null,
   updated_at  timestamptz not null default now(),
@@ -57,7 +57,7 @@ create policy "owner_only" on category_project_map
 -- ────────────────────────────────────────────────────────────
 create table if not exists audit_log (
   id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users(id) on delete cascade,
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   entity     text not null,
   entity_id  text not null,
   action     text not null,
