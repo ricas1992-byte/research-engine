@@ -75,19 +75,23 @@ export async function updateFinalOutput(
 }
 
 export async function deleteFinalOutput(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('final_outputs')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('title')
+    .single()
   if (error) throw new Error('שגיאה במחיקת תוצר: ' + error.message)
-  void audit('final_outputs', id, 'soft_delete')
+  void audit('final_outputs', id, 'soft_delete', { title: data.title })
 }
 
 export async function restoreFinalOutput(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('final_outputs')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('title')
+    .single()
   if (error) throw new Error('שגיאה בשחזור תוצר: ' + error.message)
-  void audit('final_outputs', id, 'restore')
+  void audit('final_outputs', id, 'restore', { title: data.title })
 }

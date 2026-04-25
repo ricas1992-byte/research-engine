@@ -73,19 +73,23 @@ export async function updateInsight(
 }
 
 export async function deleteInsight(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('insights')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('text')
+    .single()
   if (error) throw new Error('שגיאה במחיקת תובנה: ' + error.message)
-  void audit('insights', id, 'soft_delete')
+  void audit('insights', id, 'soft_delete', { text: data.text.slice(0, 200) })
 }
 
 export async function restoreInsight(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('insights')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('text')
+    .single()
   if (error) throw new Error('שגיאה בשחזור תובנה: ' + error.message)
-  void audit('insights', id, 'restore')
+  void audit('insights', id, 'restore', { text: data.text.slice(0, 200) })
 }

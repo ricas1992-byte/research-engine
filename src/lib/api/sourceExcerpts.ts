@@ -81,19 +81,23 @@ export async function updateSourceExcerpt(
 }
 
 export async function deleteSourceExcerpt(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('source_excerpts')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('quoted_text')
+    .single()
   if (error) throw new Error('שגיאה במחיקת ציטוט: ' + error.message)
-  void audit('source_excerpts', id, 'soft_delete')
+  void audit('source_excerpts', id, 'soft_delete', { quoted_text: data.quoted_text.slice(0, 200) })
 }
 
 export async function restoreSourceExcerpt(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('source_excerpts')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('quoted_text')
+    .single()
   if (error) throw new Error('שגיאה בשחזור ציטוט: ' + error.message)
-  void audit('source_excerpts', id, 'restore')
+  void audit('source_excerpts', id, 'restore', { quoted_text: data.quoted_text.slice(0, 200) })
 }
