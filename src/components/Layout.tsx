@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/sources',        label: 'מקורות',              icon: '📎', end: false },
   { to: '/output',         label: 'תוצר סופי',           icon: '📝', end: false },
   { to: '/map',            label: 'מפת מחקר',            icon: '🗺', end: false },
+  { to: '/archive',        label: 'ארכיון',              icon: '🗃', end: false },
 ];
 
 export function Layout() {
