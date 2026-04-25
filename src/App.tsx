@@ -21,6 +21,7 @@ const FinalOutputView = lazy(() => import('./views/FinalOutputView').then((m) =>
 const ResearchMap = lazy(() => import('./views/ResearchMap').then((m) => ({ default: m.ResearchMap })));
 const SourcesView = lazy(() => import('./views/SourcesView').then((m) => ({ default: m.SourcesView })));
 const ProjectsView = lazy(() => import('./views/ProjectsView').then((m) => ({ default: m.ProjectsView })));
+const ArchiveView = lazy(() => import('./views/ArchiveView').then((m) => ({ default: m.ArchiveView })));
 
 function ViewFallback() {
   return (
@@ -73,6 +74,7 @@ function AppShell() {
           <Route path="investigations/:id" element={<InvestigationDetail />} />
           <Route path="insights" element={<InsightsView />} />
           <Route path="output" element={<FinalOutputView />} />
+          <Route path="archive" element={<ArchiveView />} />
           {featureFlags.researchMap && <Route path="map" element={<ResearchMap />} />}
           {featureFlags.sourcesView && <Route path="sources" element={<SourcesView />} />}
         </Route>
