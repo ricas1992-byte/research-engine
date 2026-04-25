@@ -81,19 +81,23 @@ export async function updateSubQuestion(
 }
 
 export async function deleteSubQuestion(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('sub_questions')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('text')
+    .single()
   if (error) throw new Error('שגיאה במחיקת שאלה: ' + error.message)
-  void audit('sub_questions', id, 'soft_delete')
+  void audit('sub_questions', id, 'soft_delete', { text: data.text.slice(0, 200) })
 }
 
 export async function restoreSubQuestion(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('sub_questions')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('text')
+    .single()
   if (error) throw new Error('שגיאה בשחזור שאלה: ' + error.message)
-  void audit('sub_questions', id, 'restore')
+  void audit('sub_questions', id, 'restore', { text: data.text.slice(0, 200) })
 }

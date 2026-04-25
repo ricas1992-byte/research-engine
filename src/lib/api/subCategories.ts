@@ -74,19 +74,23 @@ export async function updateSubCategory(
 }
 
 export async function deleteSubCategory(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('sub_categories')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('name')
+    .single()
   if (error) throw new Error('שגיאה במחיקת תת-קטגוריה: ' + error.message)
-  void audit('sub_categories', id, 'soft_delete')
+  void audit('sub_categories', id, 'soft_delete', { name: data.name })
 }
 
 export async function restoreSubCategory(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('sub_categories')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('name')
+    .single()
   if (error) throw new Error('שגיאה בשחזור תת-קטגוריה: ' + error.message)
-  void audit('sub_categories', id, 'restore')
+  void audit('sub_categories', id, 'restore', { name: data.name })
 }

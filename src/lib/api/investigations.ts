@@ -82,19 +82,23 @@ export async function updateInvestigation(
 }
 
 export async function deleteInvestigation(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('investigations')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('title')
+    .single()
   if (error) throw new Error('שגיאה במחיקת חקירה: ' + error.message)
-  void audit('investigations', id, 'soft_delete')
+  void audit('investigations', id, 'soft_delete', { title: data.title })
 }
 
 export async function restoreInvestigation(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('investigations')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('title')
+    .single()
   if (error) throw new Error('שגיאה בשחזור חקירה: ' + error.message)
-  void audit('investigations', id, 'restore')
+  void audit('investigations', id, 'restore', { title: data.title })
 }

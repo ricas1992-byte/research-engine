@@ -71,19 +71,23 @@ export async function updateCategory(id: string, updates: Partial<Omit<Category,
 
 /** Soft-delete: marks `deleted_at`. Preserves data per CLAUDE.md archive-only rule. */
 export async function deleteCategory(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('categories')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('name')
+    .single()
   if (error) throw new Error('שגיאה במחיקת קטגוריה: ' + error.message)
-  void audit('categories', id, 'soft_delete')
+  void audit('categories', id, 'soft_delete', { name: data.name })
 }
 
 export async function restoreCategory(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('categories')
     .update({ deleted_at: null })
     .eq('id', id)
+    .select('name')
+    .single()
   if (error) throw new Error('שגיאה בשחזור קטגוריה: ' + error.message)
-  void audit('categories', id, 'restore')
+  void audit('categories', id, 'restore', { name: data.name })
 }
