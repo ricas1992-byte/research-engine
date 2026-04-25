@@ -13,7 +13,7 @@ export const featureFlags = {
   researchMap: read('VITE_FF_RESEARCH_MAP', true),
   sourcesView: read('VITE_FF_SOURCES_VIEW', true),
   recycleBin:  read('VITE_FF_RECYCLE_BIN',  true),
-  auditLog:    read('VITE_FF_AUDIT_LOG',    false),
+  auditLog:    read('VITE_FF_AUDIT_LOG',    true),
 } as const
 
 export type FeatureFlag = keyof typeof featureFlags
